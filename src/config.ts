@@ -1,8 +1,8 @@
 export const SITE = {
   website: "https:/yokecd.github.io/blog", // replace this with your deployed domain
+  base: "blog",
   author: "David Desmarais-Michaud",
-  profile: "https://satnaing.dev/",
-  desc: "A minimal, responsive and SEO-friendly Astro blog theme.",
+  desc: "Yoke Community Blog Space",
   title: "YokeBlogSpace",
   ogImage: "",
   lightAndDarkMode: true,
