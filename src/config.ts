@@ -2,6 +2,7 @@ export const SITE = {
   website: "https:/yokecd.github.io/blog", // replace this with your deployed domain
   base: "blog",
   author: "David Desmarais-Michaud",
+  profile: "",
   desc: "Yoke Community Blog Space",
   title: "YokeBlogSpace",
   ogImage: "",
