@@ -31,6 +31,7 @@ const {
   modDatetime,
   tags,
   hideEditPost,
+  workInProgress,
 } = post.data;
 
 const { Content } = await render(post);
@@ -96,6 +97,13 @@ const nextPost =
     >
       {title}
     </h1>
+    {
+      workInProgress && (
+        <h2 class="text-xl" style="color: orange">
+          Prerelease: WorkInProgress
+        </h2>
+      )
+    }
     <div class="flex items-center gap-4">
       <Datetime
         pubDatetime={pubDatetime}

@@ -1,6 +1,7 @@
 ---
 author: David Desmarais-Michaud
 pubDatetime: 2025-03-23T01:25:07.421Z
+workInProgress: true
 title: Interfacing with WebAssembly in Go
 slug: interfacing-with-webassembly-in-go
 featured: true
