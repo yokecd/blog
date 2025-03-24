@@ -53,7 +53,7 @@ The host runs the WASM module as a guest within its own memory sandbox. It’s s
 
 The host can expose functions that the guest can import and call. When the guest WASM module invokes such a function, it yields control back to the host, waits for it to execute the function, and then resumes execution.
 
-<img src="/src/assets/images/interface-with-wasm/host-guest.svg" class="dark:invert" />
+![host-guest](../../assets/images/interface-with-wasm/host-guest.svg)
 
 > **_INFO:_** From this point onwards the term Host refers to the process running the WebAssembly Runtime.
 > Generally, in our case this refers to the Yoke CLI.
