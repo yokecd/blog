@@ -13,13 +13,13 @@ tags:
   - Yoke
 description: Experience building a host module in webassembly for yoke
 ---
-It’s no secret that the [Yoke](https://github.com/yokecd/yoke) project is a big fan of WebAssembly. WebAssembly allows us to compile our code into a single OS- and architecture-agnostic binary. This compilation process is one way we package our code, making it ready to run safely on any host.
+It’s no secret that the [yoke](https://github.com/yokecd/yoke) project is a big fan of WebAssembly. WebAssembly allows us to compile our code into a single OS- and architecture-agnostic binary. This compilation process is one way we package our code, making it ready to run safely on any host.
 
 Beyond serving as the package format for Yoke Flights, WebAssembly enables us to execute code within a sandbox, enforcing strict security guarantees. When running a WASM module from Go, the module cannot access the host's memory, make syscalls, open file descriptors, or establish network connections.
 
-This ensures that [Yoke](https://github.com/yokecd/yoke) can run WASM Modules securely while preventing potentially untrusted code from compromising your system.
+This ensures that [yoke](https://github.com/yokecd/yoke) can run WASM Modules securely while preventing potentially untrusted code from compromising your system.
 
-### But if this is true, how can Yoke provide [Cluster Access](https://yokecd.github.io/docs/concepts/cluster-access)?
+### But if this is true, how can yoke provide [Cluster Access](https://yokecd.github.io/docs/concepts/cluster-access)?
 
 Cluster Access might seem to contradict everything we just said:
 
@@ -42,7 +42,7 @@ WASM modules are executed by a host program. The most common environment for run
 - Wasmtime
 - Wazero
 
-[Yoke](https://github.com/yokecd/yoke) is built with Go, and so uses [Wazero](https://github.com/tetratelabs/wazero), a pure Go runtime for WASM.
+[Yoke](https://github.com/yokecd/yoke) is built with Go, and so uses [wazero](https://github.com/tetratelabs/wazero), a pure Go runtime for WASM.
 
 The host runs the WASM module as a guest within its own memory sandbox. It’s similar to a Russian doll, with the host program containing a smaller guest program within itself.
 
@@ -54,7 +54,7 @@ The host can expose functions that the guest can import and call. When the guest
 > Generally, in our case this refers to the Yoke CLI.
 > The guest refers to the WebAssembly Module embedded within the Host Process.
 
-If the user explicitly opts in, [Yoke](https://github.com/yokecd/yoke) provides a single function to WASM modules: `k8s_lookup`.  
+If the user explicitly opts in, [yoke](https://github.com/yokecd/yoke) provides a single function to WASM modules: `k8s_lookup`.  
 This function is called by the guest module but executed by the host. This means that the WASM module cannot perform arbitrary actions; it can only invoke the behavior provided by `k8s_lookup`.
 
 ## Hurdles
@@ -63,9 +63,9 @@ Even though we can provide host functions to the guest, our task is not over yet
 WebAssembly is, after all, an assembly-like language. It only supports basic numeric types and does not natively support strings or structs.
 
 > **_NOTE:_** WASI Preview 2 introduces the component model, allowing us to define types that both the host and guest can understand.  
-> However, [Wazero](https://github.com/tetratelabs/wazero) does not support this yet, opting instead for WASI Preview 1.
+> However, [wazero](https://github.com/tetratelabs/wazero) does not support this yet, opting instead for WASI Preview 1.
 
-Despite these limitations, if we look at the Yoke Cluster-Access API, it appears quite high-level:
+Despite these limitations, if we look at the yoke Cluster-Access API, it appears quite high-level:
 
 ```go
 package main
@@ -139,7 +139,7 @@ However there are still some details that elude us:
 
 #### Guest Perspective
 
-From the perspective of the Guest WebAssembly module, we have strings and buffers that we want to transform into `uint64` values. The strategy that [Yoke](https://github.com/yokecd/yoke) uses is to represent the address of the string as the first 32 bits, and the length as the last 32 bits:
+From the perspective of the Guest WebAssembly module, we have strings and buffers that we want to transform into `uint64` values. The strategy that [yoke](https://github.com/yokecd/yoke) uses is to represent the address of the string as the first 32 bits, and the length as the last 32 bits:
 
 ```go
 import "unsafe"
@@ -199,7 +199,7 @@ We have now seen how to work with Strings and Buffers from the perspective of th
 However, the host is slightly different. The guest module assumes that it is the entire world, and as such uses the pointers to variables
 and passes those values up to the host. The host, on the other hand, needs to interpret those values in the context of the guest's memory space.
 
-With [Wazero](https://github.com/tetratelabs/wazero), this is quite easy since host functions by convention start with a reference to the guest module.
+With [wazero](https://github.com/tetratelabs/wazero), this is quite easy since host functions by convention start with a reference to the guest module.
 
 Hence, we can build helpers to read our values in from the Guest Module's memory.
 
@@ -271,7 +271,7 @@ host to the guest. We could create a data type for containing multiple values or
 
 Anything would work as long as the host and the guest agree on the convention.
 
-[Yoke](https://github.com/yokecd/yoke) uses a `wasm.State` enum (or as close to an enum as you get in Go) to let the guest know what kind of return value it is getting.
+[yoke](https://github.com/yokecd/yoke) uses a `wasm.State` enum (or as close to an enum as you get in Go) to let the guest know what kind of return value it is getting.
 At the time of writing, it looks like this:
 
 ```go
@@ -288,7 +288,7 @@ const (
 ```
 
 This allows us to define the state of the host function call, and let the guest interpret the returned buffer accordingly.
-Those states resemble HTTP Errors, naturally because the use-case [Yoke](https://github.com/yokecd/yoke) has is to talk to the Kubernetes API.
+Those states resemble HTTP Errors, naturally because the use-case [yoke](https://github.com/yokecd/yoke) has is to talk to the Kubernetes API.
 
 However, they are meant to be generic, common-sense, grass-fed errors you would expect to see in the wild.
 Packages can use these states to build upon their own Error types.
@@ -327,11 +327,93 @@ if kerrors.IsNotFound(err) {
 
 Then the guest simply needs to check the state value, and interpret the data in the returned Buffer accordingly.
 
+## Putting it together
+
+Now we have all the bits and pieces required for defining a Host function, and calling it from the guest.
+
+Some of the details on the Host are specific to [wazero](https://github.com/tetratelabs/wazero) such as their API for building "host modules".
+The basic gist of it is that wazero lets you define host functions where the first two arguments are the `context.Context` and `api.Module`,
+the following arguments are the ones the guest will use.
+
+```go
+hostModule := runtime.
+  NewHostModuleBuilder("host").
+  NewFunctionBuilder().
+  WithFunc(func(ctx context.Context, module api.Module, state wasm.Pointer, name, namespace, kind, apiVersion wasm.String) wasm.Buffer {
+    // Do the lookup on the host, and write results back to the module via its memory.
+    // Not included as it is outside the scope of this post.
+    // Feel free to let me know if a blogpost on interacting the with k8s API would be interesting!
+  }).
+  Export("k8s_lookup")
+```
+
+Then from the guest we can import this function using the namespace `host` and the function name `k8s_lookup`.
+
+Replicating something similar to [yoke](https://github.com/yokecd/yoke)'s `pkg/wasi/k8s` package we get:
+
+```go
+package k8s
+
+//go:wasmimport host k8s_lookup
+func lookup(state wasm.Ptr, name, namespace, kind, apiVersion wasm.String) wasm.Buffer
+
+type ResourceIdentifier struct {
+ Name       string
+ Namespace  string
+ Kind       string
+ ApiVersion string
+}
+
+// Lookup is our public interface that wraps our k8s_lookup function imported from the host
+// and provides a nice high-level API for our users.
+//
+// It folows our convention of generating a state variable for the host to signal back
+// the state of the result.
+//
+// It calls our imported lookup function with the appropriate arguments converted
+// to their uint64 representations (wasm.String defined above).
+//
+// Some logic from the yoke project has been omitted to soley focus on the WebAssembly related aspects.
+func Lookup[T any](identifier ResourceIdentifier) (*T, error) {
+ var state wasm.State
+
+ buffer := lookup(
+  wasm.PtrTo(&state),
+  wasm.FromString(identifier.Name),
+  wasm.FromString(identifier.Namespace),
+  wasm.FromString(identifier.Kind),
+  wasm.FromString(identifier.ApiVersion),
+ )
+
+ switch state {
+ case wasm.StateOK:
+  var resource T
+  if err := json.Unmarshal(buffer.Slice(), &resource); err != nil {
+   return nil, err
+  }
+  return &resource, nil
+ case wasm.StateFeatureNotGranted:
+  return nil, ErrorClusterAccessNotGranted
+ case wasm.StateError:
+  return nil, errors.New(buffer.String())
+ case wasm.StateForbidden:
+  return nil, ErrorForbidden(buffer.String())
+ case wasm.StateNotFound:
+  return nil, ErrorNotFound(buffer.String())
+ case wasm.StateUnauthenticated:
+  return nil, ErrorUnauthenticated(buffer.String())
+
+ default:
+  panic("unknown state")
+ }
+}
+```
+
 ## Conclusion
 
 Through this exploration, we've delved into the intricate dance between Host programs and their Guest WebAssembly modules. By leveraging numeric types and a bit of pointer magic, we've managed to facilitate effective communication between these two realms.
 
-We've also highlighted some of the type abstractions employed by [Yoke](https://github.com/yokecd/yoke) to make working with `Strings` and `Buffers` more intuitive and manageable.
+We've also highlighted some of the type abstractions employed by [yoke](https://github.com/yokecd/yoke) to make working with `Strings` and `Buffers` more intuitive and manageable.
 
 Finally, we've examined various conventions for representing data of different types, showing how to pass complex data structures and errors back and forth between the host and guest.
 
