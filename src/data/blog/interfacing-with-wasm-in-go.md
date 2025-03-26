@@ -24,19 +24,21 @@ When running a WASM module from Go, the module cannot access the host's memory, 
 
 This ensures that [yoke](https://github.com/yokecd/yoke) can run WASM Modules securely while preventing potentially untrusted code from compromising your system.
 
-### But if this is true, how can yoke provide [Cluster Access](https://yokecd.github.io/docs/concepts/cluster-access)?
+### But if this is true, how can yoke provide [Cluster-Access](https://yokecd.github.io/docs/concepts/cluster-access)?
 
-Cluster Access might seem to contradict everything we just said:
+For those who are not familiar, flights (WebAssembly compiled programs that generate Kubernetes resources) can be invoked with the flag `--cluster-access` to enable fetching resources from the cluster.
+
+This feature may seem to contradict everything we have just said:
 
 - We don’t want arbitrary code performing unrestricted actions in our cluster.
 - If WebAssembly can’t open a socket, how can it communicate with the Kubernetes API?
 
-While these concerns are understandable, they are ultimately unfounded.
-
-Even with Cluster Access, [yoke flights](https://yokecd.github.io/docs/concepts/flights) cannot perform arbitrary actions in your Kubernetes cluster.
+Surprisingly, in the end, when the cookie crumbles, there is no contradiction: even with cluster-access, [yoke flights](https://yokecd.github.io/docs/concepts/flights) cannot perform arbitrary actions in your Kubernetes cluster.
 And it remains true that a WebAssembly module cannot make network requests to the cluster to interact with it —
 
-At least not directly. Let’s take a closer look at how this works.
+At least not directly.
+
+Let’s take a closer look at how this works.
 
 ## Cluster-Access Behind the Scenes
 
@@ -199,12 +201,12 @@ func (buffer Buffer) Slice() []byte {
 }
 ```
 
-Doing the same for the `wasm.String` type maps 1-1 with the `wasm.Buffer` example, and in the spirit of a university textbook,
+Doing the same for the `wasm.String` type maps one to one with our `wasm.Buffer` example, and in the spirit of a university textbook,
 will be left as an exercise for the reader.
 
 #### Perspective of the Host
 
-We have now seen how to work with Strings and Buffers from the perspective of the Guest: just a little unsafe pointer magic.
+We have now seen how to work with strings and buffers from the perspective of the Guest: just a little unsafe pointer magic.
 However, the Host is slightly different. The Guest module assumes that it is the entire world, and as such uses the pointers to variables
 and passes those values up to the Host. The Host, on the other hand, needs to interpret those values in the context of the Guest's memory space.
 
@@ -336,7 +338,7 @@ if kerrors.IsNotFound(err) {
 
 Then the Guest simply needs to check the state value, and interpret the data in the returned Buffer accordingly.
 
-## Putting it together
+## Putting It All Together
 
 Now we have all the bits and pieces required for defining a Host function, and calling it from the Guest.
 
@@ -350,8 +352,30 @@ hostModule := runtime.
   NewFunctionBuilder().
   WithFunc(func(ctx context.Context, module api.Module, state wasm.Pointer, name, namespace, kind, apiVersion wasm.String) wasm.Buffer {
     // Do the lookup on the host, and write results back to the module via its memory.
-    // Not included as it is outside the scope of this post.
-    // Feel free to let me know if a blogpost on interacting the with k8s API would be interesting!
+
+
+    // DoLookup is our way to hand-wave the details of looking up kubernetes resources.
+    // Feel free to let me know if a blog post on interacting with the K8s API would be interesting!
+    resource, err := DoLookup(
+      // We load the actual strings from the Guest module's memory using their uint64 representations.
+      wasi.LoadString(module, name),
+      wasi.LoadString(module, namespace),
+      wasi.LoadString(module, kind),
+      wasi.LoadString(module, apiVersion),
+    );
+    if err != nil {
+      if kerrors.IsNotFound(err) {
+        return wasi.Error(module, state, wasm.StateNotFound, err.Error())
+      }
+      return wasi.Error(module, state, wasm.StateError, err.Error())
+    }
+
+    data, err := json.Marshal(resource)
+    if err != nil {
+      return wasi.Error(module, state, wasm.StateError, err.Error())
+    }
+
+    return Malloc(ctx, module, data)
   }).
   Export("k8s_lookup")
 ```
