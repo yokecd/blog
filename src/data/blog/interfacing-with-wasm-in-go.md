@@ -207,7 +207,7 @@ func (buffer Buffer) Slice() []byte {
 Doing the same for the `wasm.String` type maps one to one with our `wasm.Buffer` example, and in the spirit of a university textbook,
 will be left as an exercise for the reader.
 
-#### Perspective of the Host
+#### Host Perspective
 
 We have now seen how to work with strings and buffers from the perspective of the Guest: just a little unsafe pointer magic.
 However, the Host is slightly different. The Guest module assumes that it is the entire world, and as such uses the pointers to variables
@@ -242,6 +242,10 @@ give the reference to the Host and let it write the response to it.
 In Go, the easiest way to allocate (malloc) memory, is to `make` a byte slice.
 
 ```go
+// Guest code
+
+// We want to export a malloc function to allow the Host to allocate memory within the Guest.
+
 //go:wasmexport malloc
 func malloc(size uint32) wasm.Buffer {
   // FromSlice is defined above (if you've forgotten about it).
@@ -252,25 +256,27 @@ func malloc(size uint32) wasm.Buffer {
 This allows us to call it from the Host:
 
 ```go
-// ExportedFunctions take in a variadic amount of uint64 as arguments and return the same as results.
-// This is because Call doesn't know the size of the arguments or results, and so must default to the
-// largest possible numeric value it can handle.
-//
-// module -> api.Module
-// data -> the []byte response we wish to write to the Guest.
-results, err := module.ExportedFunction("malloc").Call(ctx, uint64(len(data)))
-if err != nil {
-  // if we cannot malloc, let's crash with gumption.
-  panic(err)
+// Host code
+
+func Malloc(module api.Module, data []byte) wasm.Buffer {
+  // ExportedFunctions take in a variadic amount of uint64 as arguments and return the same as results.
+  // This is because Call doesn't know the size of the arguments or results, and so must default to the
+  // largest possible numeric value it can handle.
+  results, err := module.ExportedFunction("malloc").Call(ctx, uint64(len(data)))
+  if err != nil {
+    // if we cannot malloc, let's crash with gumption.
+    panic(err)
+  }
+
+  // The first item in the result will be the returned value from the Guest function.
+  buffer := wasm.Buffer(results[0])
+
+  // Write the data to the buffer we allocated for this bespoke purpose.
+  module.Memory().Write(buffer.Address(), data)
+
+  // And return it!
+  return buffer
 }
-
-// And finally write to the buffer and return it to the Guest!
-
-buffer := wasm.Buffer(results[0])
-
-module.Memory().Write(buffer.Address(), data)
-
-return buffer
 ```
 
 ### Representing Error values
@@ -320,8 +326,7 @@ This allows us to create a nice little error creation helper for the Host:
 func Error(ctx context.Context, module api.Module, ptr Ptr, state State, err string) Buffer {
   // Write the state enum value to the location in memory where we keep the state.
   module.Memory().WriteUint32Le(uint32(ptr), uint32(state))
-  // Malloc hasn't been defined above. It is simply a helper over the little "malloc" call we saw above.
-  // It allows the host to write data to the module's memory.
+  // Write the error data to a newly allocated Buffer using Malloc defined above.
   return Malloc(ctx, module, []byte(err))
 }
 ```
