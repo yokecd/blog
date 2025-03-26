@@ -11,7 +11,10 @@ tags:
   - Go
   - WebAssembly
   - Yoke
-description: Experience building a Host module in webassembly for yoke
+description: >
+  Dive into the world of WebAssembly and learn how to seamlessly and securely
+  integrate it with system resources through a hands-on exploration of Host and
+  Guest interactions.
 ---
 It’s no secret that the [yoke](https://github.com/yokecd/yoke) project is a big fan of WebAssembly.
 
