@@ -11,11 +11,16 @@ tags:
   - Go
   - WebAssembly
   - Yoke
-description: Experience building a host module in webassembly for yoke
+description: Experience building a Host module in webassembly for yoke
 ---
-It’s no secret that the [yoke](https://github.com/yokecd/yoke) project is a big fan of WebAssembly. WebAssembly allows us to compile our code into a single OS- and architecture-agnostic binary. This compilation process is one way we package our code, making it ready to run safely on any host.
+It’s no secret that the [yoke](https://github.com/yokecd/yoke) project is a big fan of WebAssembly.
 
-Beyond serving as the package format for Yoke Flights, WebAssembly enables us to execute code within a sandbox, enforcing strict security guarantees. When running a WASM module from Go, the module cannot access the host's memory, make syscalls, open file descriptors, or establish network connections.
+WebAssembly allows us to compile our code into a single OS and architecture agnostic binary.
+This compilation process is one way we package our code, making it ready to run safely on any host.
+
+Beyond serving as the package format for [yoke flights](https://yokecd.github.io/docs/concepts/flights),
+WebAssembly enables us to execute code within a sandbox, enforcing strict security guarantees.
+When running a WASM module from Go, the module cannot access the host's memory, make syscalls, open file descriptors, or establish network connections.
 
 This ensures that [yoke](https://github.com/yokecd/yoke) can run WASM Modules securely while preventing potentially untrusted code from compromising your system.
 
@@ -28,41 +33,44 @@ Cluster Access might seem to contradict everything we just said:
 
 While these concerns are understandable, they are ultimately unfounded.
 
-Even with Cluster Access, Yoke Flights cannot perform arbitrary actions in your Kubernetes cluster. And it remains true that a WebAssembly module cannot make network requests to the cluster to interact with it—
+Even with Cluster Access, [yoke flights](https://yokecd.github.io/docs/concepts/flights) cannot perform arbitrary actions in your Kubernetes cluster.
+And it remains true that a WebAssembly module cannot make network requests to the cluster to interact with it —
 
 At least not directly. Let’s take a closer look at how this works.
 
 ## Cluster-Access Behind the Scenes
 
-**WebAssembly System Interface (WASI)** is a standard that enables WASM modules to interact with system resources. As we will see, it allows the module to delegate tasks to the host.
+**WebAssembly System Interface (WASI)** is a standard that enables WASM modules to interact with system resources.
+As we will see, it allows the module to delegate tasks to the host.
 
 WASM modules are executed by a host program. The most common environment for running WebAssembly is a web browser, but it is far from the only runtime available. Unsurprisingly, Node.js can also run WebAssembly, along with many other runtimes, including:
 
-- Wasmer
 - Wasmtime
+- Wasmer
 - Wazero
 
 [Yoke](https://github.com/yokecd/yoke) is built with Go, and so uses [wazero](https://github.com/tetratelabs/wazero), a pure Go runtime for WASM.
 
-The host runs the WASM module as a guest within its own memory sandbox. It’s similar to a Russian doll, with the host program containing a smaller guest program within itself.
+The Host runs the WASM module as a Guest within its own memory sandbox. It’s similar to a Russian doll, with the Host program containing a smaller Guest program within itself.
 
-The host can expose functions that the guest can import and call. When the guest WASM module invokes such a function, it yields control back to the host, waits for it to execute the function, and then resumes execution.
+The Host can expose functions that the Guest can import and call. When the Guest WASM module invokes such a function, it yields control back to the Host, waits for it to execute the function, and then resumes execution.
 
 ![host-guest](../../assets/images/interface-with-wasm/host-guest.svg)
 
 > **_INFO:_** From this point onwards the term Host refers to the process running the WebAssembly Runtime.
-> Generally, in our case this refers to the Yoke CLI.
-> The guest refers to the WebAssembly Module embedded within the Host Process.
+> In our case this refers to the Yoke CLI.
+> The Guest refers to the WebAssembly Module embedded within the Host Process.
 
-If the user explicitly opts in, [yoke](https://github.com/yokecd/yoke) provides a single function to WASM modules: `k8s_lookup`.  
-This function is called by the guest module but executed by the host. This means that the WASM module cannot perform arbitrary actions; it can only invoke the behavior provided by `k8s_lookup`.
+If the user explicitly opts in, [yoke](https://github.com/yokecd/yoke) provides a single function to WASM modules: `k8s_lookup`.
+
+This function is called by the Guest module but executed by the Host. This means that the WASM module cannot perform arbitrary actions; it can only invoke the behavior provided by `k8s_lookup`.
 
 ## Hurdles
 
-Even though we can provide host functions to the guest, our task is not over yet.  
+Even though we can provide Host functions to the Guest, our task is not over yet.  
 WebAssembly is, after all, an assembly-like language. It only supports basic numeric types and does not natively support strings or structs.
 
-> **_NOTE:_** WASI Preview 2 introduces the component model, allowing us to define types that both the host and guest can understand.  
+> **_NOTE:_** WASI Preview 2 introduces the component model, allowing us to define types that both the Host and Guest can understand.  
 > However, [wazero](https://github.com/tetratelabs/wazero) does not support this yet, opting instead for WASI Preview 1.
 
 Despite these limitations, if we look at the yoke Cluster-Access API, it appears quite high-level:
@@ -87,25 +95,26 @@ func main() {
 }
 ```
 
-The challenge—and the goal of this blog post—is how to pass complex data types and errors between the host and the guest module.
+One of the most difficult challenges when we first start working with WebAssembly is understanding how to pass data between the Host and Guest.
 
-At this point, it may be useful to examine the signature of the `k8s_lookup` function provided by the host:
+To this end, it may be useful to examine the signature of the `k8s_lookup` function provided by the Host:
 
 ```go
 //go:wasmimport host k8s_lookup
 func lookup(state uint32, name, namespace, kind, apiversion uint64) uint64
 ```
 
-This may feel like witchcraft—and maybe it is.
+This may feel like witchcraft — and maybe it is.
 
-The first thing we need to know is that WebAssembly modules use a 32-bit address space.  
+The first thing we need to know is that WebAssembly modules use a 32 bit-address space.
 This means that any memory address within the module can be represented by a 32-bit integer.
 
 The second thing we need to know is that strings (and by extension, byte slices) can be represented
-as a pointer to the start of the string and its length. Hence, a 32-bit integer for the address of the string and a 32-bit integer for the length of the string—or a single 64-bit integer.
+as a pointer to the start of the string and its length.
+Hence, a 32-bit integer for the address of the string and a 32-bit integer for the length of the string—or a single 64-bit integer.
 
-The third thing we need to know is that the host program owns the guest module and its memory sandbox.  
-This means that the host program can read from the WebAssembly module's memory. If the module declares a string and passes the address and length to the host, the host can read the string from the guest's memory.
+The third thing we need to know is that the Host program owns the Guest module and its memory sandbox.
+This means that the Host program can read from the WebAssembly module's memory. If the module declares a string and passes the address and length to the Host, the Host can read the string from the Guest's memory.
 
 Now that we know these facts, the magic behind the function signature starts to fall away.
 
@@ -126,13 +135,13 @@ And the `k8s_lookup` function can be rewritten like so:
 func lookup(state wasm.Pointer, name, namespace, kind, apiversion wasm.String) wasm.Buffer
 ```
 
-This should now make much more intuitive sense. Given the strings `name`, `namespace`, `kind`, and `apiVersion`, we can look up a Kubernetes resource on the host, serialize it as JSON, and pass it back to the guest as a `[]byte`.
+This should now make much more intuitive sense. Given the strings `name`, `namespace`, `kind`, and `apiVersion`, we can look up a Kubernetes resource on the Host, serialize it as JSON, and pass it back to the Guest as a `[]byte`.
 
 However there are still some details that elude us:
 
-- How do we translate strings from the guest into uint64 integer values for the host to consume?
+- How do we translate strings from the Guest into uint64 integer values for the Host to consume?
   - And relatedly, how do we read the data from the wasm.Buffer (a uint64) as a `[]byte`?
-- How do we return a Buffer from the host to the guest, when the guest cannot reach outside itself to read host memory?
+- How do we return a Buffer from the Host to the Guest, when the Guest cannot reach outside itself to read Host memory?
 - What is the state pointer and what does it do?
 
 ### Translating data to numeric types and back again
@@ -195,11 +204,11 @@ will be left as an exercise for the reader.
 
 #### Perspective of the Host
 
-We have now seen how to work with Strings and Buffers from the perspective of the guest: just a little unsafe pointer magic.
-However, the host is slightly different. The guest module assumes that it is the entire world, and as such uses the pointers to variables
-and passes those values up to the host. The host, on the other hand, needs to interpret those values in the context of the guest's memory space.
+We have now seen how to work with Strings and Buffers from the perspective of the Guest: just a little unsafe pointer magic.
+However, the Host is slightly different. The Guest module assumes that it is the entire world, and as such uses the pointers to variables
+and passes those values up to the Host. The Host, on the other hand, needs to interpret those values in the context of the Guest's memory space.
 
-With [wazero](https://github.com/tetratelabs/wazero), this is quite easy since host functions by convention start with a reference to the guest module.
+With [wazero](https://github.com/tetratelabs/wazero), this is quite easy since Host functions by convention start with a reference to the Guest module.
 
 Hence, we can build helpers to read our values in from the Guest Module's memory.
 
@@ -215,9 +224,9 @@ func LoadBuffer(module api.Module, buffer wasm.Buffer) []byte {
 }
 ```
 
-This leaves us with one final problem from the Host's perspective. How do we return our response to the guest?
-We know how to read memory from the guest. However, we need to be able to write to the guest. We cannot create a `[]byte`
-on the Host and expect the Guest to be able to read from it. The guest cannot see beyond its memory sandbox.
+This leaves us with one final problem from the Host's perspective. How do we return our response to the Guest?
+We know how to read memory from the Guest. However, we need to be able to write to the Guest. We cannot create a `[]byte`
+on the Host and expect the Guest to be able to read from it. The Guest cannot see beyond its memory sandbox.
 
 The Host can reach into the Guest, but the Guest cannot reach out into the Host.
 
@@ -243,14 +252,14 @@ This allows us to call it from the Host:
 // largest possible numeric value it can handle.
 //
 // module -> api.Module
-// data -> the []byte response we wish to write to the guest.
+// data -> the []byte response we wish to write to the Guest.
 results, err := module.ExportedFunction("malloc").Call(ctx, uint64(len(data)))
 if err != nil {
   // if we cannot malloc, let's crash with gumption.
   panic(err)
 }
 
-// And finally write to the buffer and return it to the guest!
+// And finally write to the buffer and return it to the Guest!
 
 buffer := wasm.Buffer(results[0])
 
@@ -267,11 +276,11 @@ In Go, we are allowed to return more than one value. However, we do not have suc
 
 After all we have read so far about passing around pointers, and allocating memory, and reading it from modules or loading it in via unsafe,
 we have all the tools we need to come up with a solution. And in fact, there are many possible ways of representing our return values from the
-host to the guest. We could create a data type for containing multiple values or have a type field to indicate what kind of value we have.
+Host to the Guest. We could create a data type for containing multiple values or have a type field to indicate what kind of value we have.
 
-Anything would work as long as the host and the guest agree on the convention.
+Anything would work as long as the Host and the Guest agree on the convention.
 
-[yoke](https://github.com/yokecd/yoke) uses a `wasm.State` enum (or as close to an enum as you get in Go) to let the guest know what kind of return value it is getting.
+[yoke](https://github.com/yokecd/yoke) uses a `wasm.State` enum (or as close to an enum as you get in Go) to let the Guest know what kind of return value it is getting.
 At the time of writing, it looks like this:
 
 ```go
@@ -287,32 +296,32 @@ const (
 )
 ```
 
-This allows us to define the state of the host function call, and let the guest interpret the returned buffer accordingly.
-Those states resemble HTTP Errors, naturally because the use-case [yoke](https://github.com/yokecd/yoke) has is to talk to the Kubernetes API.
+This allows us to define the state of the Host function call, and let the Guest interpret the returned buffer accordingly.
+Those states resemble HTTP errors, naturally because the use-case [yoke](https://github.com/yokecd/yoke) has is to talk to the Kubernetes API.
 
 However, they are meant to be generic, common-sense, grass-fed errors you would expect to see in the wild.
-Packages can use these states to build upon their own Error types.
+Packages can use these states to build upon their own error types.
 
 And so we have finally arrived at the mystery of the `k8s_lookup` state pointer argument.
 
-The guest creates a state variable and passes its pointer to the host.
-The host does its logic, and writes the state value to it before returning a result.
+The Guest creates a state variable and passes its pointer to the Host.
+The Host does its logic, and writes the state value to it before returning a result.
 If no error occurred it can leave it as its zero value: `StateOK`. If an error occurred it can set the state to the
-most semantically meaningful state for the guest to use.
+most semantically meaningful state for the Guest to use.
 
-This allows us to create a nice little error creation helper for the host:
+This allows us to create a nice little error creation helper for the Host:
 
 ```go
 func Error(ctx context.Context, module api.Module, ptr Ptr, state State, err string) Buffer {
-  mem := module.Memory()
-  mem.WriteUint32Le(uint32(ptr), uint32(state))
+  // Write the state enum value to the location in memory where we keep the state.
+  module.Memory().WriteUint32Le(uint32(ptr), uint32(state))
   // Malloc hasn't been defined above. It is simply a helper over the little "malloc" call we saw above.
   // It allows the host to write data to the module's memory.
   return Malloc(ctx, module, []byte(err))
 }
 ```
 
-We can then use it to construct error responses from the host to the guest.
+We can then use it to construct error responses from the Host to the Guest.
 
 ```go
 import kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -325,15 +334,15 @@ if kerrors.IsNotFound(err) {
 // Use deployment ...
 ```
 
-Then the guest simply needs to check the state value, and interpret the data in the returned Buffer accordingly.
+Then the Guest simply needs to check the state value, and interpret the data in the returned Buffer accordingly.
 
 ## Putting it together
 
-Now we have all the bits and pieces required for defining a Host function, and calling it from the guest.
+Now we have all the bits and pieces required for defining a Host function, and calling it from the Guest.
 
-Some of the details on the Host are specific to [wazero](https://github.com/tetratelabs/wazero) such as their API for building "host modules".
-The basic gist of it is that wazero lets you define host functions where the first two arguments are the `context.Context` and `api.Module`,
-the following arguments are the ones the guest will use.
+Some of the details on the Host are specific to [wazero](https://github.com/tetratelabs/wazero) such as their API for building Host-Modules.
+The basic gist of it is that [wazero](https://github.com/tetratelabs/wazero) lets you define Host functions where the first two arguments are the `context.Context` and `api.Module`,
+the following arguments are the ones the Guest will use.
 
 ```go
 hostModule := runtime.
@@ -347,7 +356,7 @@ hostModule := runtime.
   Export("k8s_lookup")
 ```
 
-Then from the guest we can import this function using the namespace `host` and the function name `k8s_lookup`.
+Then from the Guest we can import this function using the namespace `host` and the function name `k8s_lookup`.
 
 Replicating something similar to [yoke](https://github.com/yokecd/yoke)'s `pkg/wasi/k8s` package we get:
 
@@ -364,10 +373,10 @@ type ResourceIdentifier struct {
  ApiVersion string
 }
 
-// Lookup is our public interface that wraps our k8s_lookup function imported from the host
+// Lookup is our public interface that wraps our k8s_lookup function imported from the Host
 // and provides a nice high-level API for our users.
 //
-// It folows our convention of generating a state variable for the host to signal back
+// It folows our convention of generating a state variable for the Host to signal back
 // the state of the result.
 //
 // It calls our imported lookup function with the appropriate arguments converted
@@ -415,7 +424,7 @@ Through this exploration, we've delved into the intricate dance between Host pro
 
 We've also highlighted some of the type abstractions employed by [yoke](https://github.com/yokecd/yoke) to make working with `Strings` and `Buffers` more intuitive and manageable.
 
-Finally, we've examined various conventions for representing data of different types, showing how to pass complex data structures and errors back and forth between the host and guest.
+Finally, we've examined various conventions for representing data of different types, showing how to pass complex data structures and errors back and forth between the Host and Guest.
 
 I hope this deep dive into WebAssembly interfacing inspires you to experiment and innovate with WebAssembly in your own projects. Happy tinkering!
 
