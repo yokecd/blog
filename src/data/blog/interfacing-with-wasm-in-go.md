@@ -222,6 +222,8 @@ With [wazero](https://github.com/tetratelabs/wazero), this is quite easy since H
 Hence, we can build helpers to read our values in from the Guest Module's memory.
 
 ```go
+package wasi
+
 import "github.com/tetratelabs/wazero/api"
 
 func LoadBuffer(module api.Module, buffer wasm.Buffer) []byte {
@@ -230,6 +232,11 @@ func LoadBuffer(module api.Module, buffer wasm.Buffer) []byte {
     panic("memory read out of bounds")
   }
   return data
+}
+
+func LoadString(module api.Module, str wasm.String) string {
+  // We can cast from wasm.String to wasm.Buffer as they are both ~uint64 variables.
+  return string(LoadBuffer(module, wasm.Buffer(str)))
 }
 ```
 
@@ -260,6 +267,8 @@ func malloc(size uint32) wasm.Buffer {
 This allows us to call it from the Host:
 
 ```go
+package wasi
+
 // Host code
 
 func Malloc(module api.Module, data []byte) wasm.Buffer {
@@ -299,6 +308,8 @@ Anything would work as long as the Host and the Guest agree on the convention.
 At the time of writing, it looks like this:
 
 ```go
+package wasm
+
 type State uint32
 
 const (
@@ -327,7 +338,9 @@ most semantically meaningful state for the Guest to use.
 This allows us to create a nice little error creation helper for the Host:
 
 ```go
-func Error(ctx context.Context, module api.Module, ptr Ptr, state State, err string) Buffer {
+package wasi
+
+func Error(ctx context.Context, module api.Module, ptr wasm.Ptr, state wasmState, err string) Buffer {
   // Write the state enum value to the location in memory where we keep the state.
   module.Memory().WriteUint32Le(uint32(ptr), uint32(state))
   // Write the error data to a newly allocated Buffer using Malloc defined above.
