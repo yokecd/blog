@@ -1,7 +1,6 @@
 ---
 author: David Desmarais-Michaud
-pubDatetime: 2025-03-23T01:25:07.421Z
-workInProgress: true
+pubDatetime: 2025-03-31T00:00:00.000Z
 title: Interfacing with WebAssembly in Go
 slug: interfacing-with-webassembly-in-go
 featured: true
@@ -38,7 +37,7 @@ This feature may seem to contradict everything we have just said:
 - We don’t want arbitrary code performing unrestricted actions in our cluster.
 - If WebAssembly can’t open a socket, how can it communicate with the Kubernetes API?
 
-Surprisingly, in the end, when the cookie crumbles, there is no contradiction: even with cluster-access, [yoke flights](https://yokecd.github.io/docs/concepts/flights) cannot perform arbitrary actions in your Kubernetes cluster.
+Surprisingly, when the cookie crumbles, there is no contradiction: even with cluster-access, [yoke flights](https://yokecd.github.io/docs/concepts/flights) cannot perform arbitrary actions in your Kubernetes cluster.
 And it remains true that a WebAssembly module cannot make network requests to the cluster to interact with it —
 
 At least not directly.
@@ -48,7 +47,7 @@ Let’s take a closer look at how this works.
 ## Cluster-Access Behind the Scenes
 
 **WebAssembly System Interface (WASI)** is a standard that enables WASM modules to interact with system resources.
-As we will see, it allows the module to delegate tasks to the host.
+As we will see, it allows the module to delegate tasks to the parent program.
 
 WASM modules are executed by a host program. The most common environment for running WebAssembly is a web browser, but it is far from the only runtime available. Unsurprisingly, Node.js can also run WebAssembly, along with many other runtimes, including:
 
@@ -58,15 +57,13 @@ WASM modules are executed by a host program. The most common environment for run
 
 [Yoke](https://github.com/yokecd/yoke) is built with Go, and so uses [wazero](https://github.com/tetratelabs/wazero), a pure Go runtime for WASM.
 
-The Host runs the WASM module as a Guest within its own memory sandbox. It’s similar to a Russian doll, with the Host program containing a smaller Guest program within itself.
-
-The Host can expose functions that the Guest can import and call. When the Guest WASM module invokes such a function, it yields control back to the Host, waits for it to execute the function, and then resumes execution.
-
 ![host-guest](../../assets/images/interface-with-wasm/host-guest.svg)
 
 > **_INFO:_** From this point onwards the term Host refers to the process running the WebAssembly Runtime.
 > In our case this refers to the Yoke CLI.
 > The Guest refers to the WebAssembly Module embedded within the Host Process.
+
+The Host runs the WASM module as a Guest within a restricted memory sandbox and exposes functions that the Guest can import and call. When the Guest invokes one of these functions, it temporarily yields control to the Host, waits for the function to execute, and then resumes execution.
 
 If the user explicitly opts in, [yoke](https://github.com/yokecd/yoke) provides a single function to WASM modules: `k8s_lookup`.
 
@@ -74,7 +71,7 @@ This function is called by the Guest module but executed by the Host. This means
 
 ## Hurdles
 
-Even though we can provide Host functions to the Guest, our task is not over yet.  
+Even though we can provide Host functions to the Guest, our task is not over yet.
 WebAssembly is, after all, an assembly-like language. It only supports basic numeric types and does not natively support strings or structs.
 
 > **_NOTE:_** WASI Preview 2 introduces the component model, allowing us to define types that both the Host and Guest can understand.  
@@ -102,7 +99,7 @@ func main() {
 }
 ```
 
-One of the most difficult challenges when we first start working with WebAssembly is understanding how to pass data between the Host and Guest.
+One of the biggest challenges when first working with WebAssembly is learning how to pass data between the Host and Guest.
 
 To this end, it may be useful to examine the signature of the `k8s_lookup` function provided by the Host:
 
@@ -113,15 +110,18 @@ func lookup(state uint32, name, namespace, kind, apiversion uint64) uint64
 
 This may feel like witchcraft — and maybe it is.
 
-The first thing we need to know is that WebAssembly modules use a 32 bit-address space.
-This means that any memory address within the module can be represented by a 32-bit integer.
+To begin demystifying it, we need to understand a few fundamental concepts:
 
-The second thing we need to know is that strings (and by extension, byte slices) can be represented
-as a pointer to the start of the string and its length.
-Hence, a 32-bit integer for the address of the string and a 32-bit integer for the length of the string—or a single 64-bit integer.
+1. **WebAssembly modules use a 32-bit address space.**
+   This means any memory address within the module can be represented by a 32-bit integer.
 
-The third thing we need to know is that the Host program owns the Guest module and its memory sandbox.
-This means that the Host program can read from the WebAssembly module's memory. If the module declares a string and passes the address and length to the Host, the Host can read the string from the Guest's memory.
+2. **Strings (and by extension, byte slices) can be represented by a pointer and a length.**
+   A string can be described using a 32-bit integer for its starting address and another 32-bit integer for its length—or a single 64-bit integer combining both.
+   In systems programming this is concept usually referred to as a [fat pointer](https://how.dev/answers/what-is-a-fat-pointer).
+
+3. **The Host program owns the Guest module and its memory sandbox.**
+   This allows the Host to read from the WebAssembly module’s memory.
+   If the module declares a string and passes its address and length to the Host, the Host can retrieve the string from the Guest’s memory.
 
 Now that we know these facts, the magic behind the function signature starts to fall away.
 
@@ -184,12 +184,13 @@ func FromSlice(buffer []byte) Buffer {
 
 // Address returns the address of a buffer as a 32-bit integer.
 func (buffer Buffer) Address() uint32 {
- return uint32(buffer >> 32)
+  return uint32(buffer >> 32)
 }
 
 // Length returns the length of a buffer as a 32-bit integer.
 func (buffer Buffer) Length() uint32 {
- return uint32(buffer)
+  // casting from a uint64 to a uint32 will drop the first 32 bytes.
+  return uint32(buffer)
 }
 
 // Slice the data at the address of the buffer, for the amount of the length of the buffer
@@ -200,6 +201,8 @@ func (buffer Buffer) Slice() []byte {
     return nil
   }
   return unsafe.Slice(
+    // An unsafe.Pointer can be cast to a pointer of any type.
+    // It's pretty unsafe, but in our case necessary!
     (*byte)(unsafe.Pointer(uintptr(buffer.Address()))),
     buffer.Length(),
   )
