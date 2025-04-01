@@ -272,7 +272,7 @@ package wasi
 
 // Host code
 
-func Malloc(module api.Module, data []byte) wasm.Buffer {
+func Malloc(ctx context.Context, module api.Module, data []byte) wasm.Buffer {
   // ExportedFunctions take in a variadic amount of uint64 as arguments and return the same as results.
   // This is because Call doesn't know the size of the arguments or results, and so must default to the
   // largest possible numeric value it can handle.
@@ -356,7 +356,7 @@ import kerrors "k8s.io/apimachinery/pkg/api/errors"
 
 deployment, err := client.CoreV1().Deployments("default").Get("example", metav1.GetOptions{})
 if kerrors.IsNotFound(err) {
-  return Error(ctx, module, stateRef, wasm.StateNotFound, err.Error())
+  return wasi.Error(ctx, module, stateRef, wasm.StateNotFound, err.Error())
 }
 
 // Use deployment ...
@@ -398,10 +398,10 @@ hostModule := runtime.
 
     data, err := json.Marshal(resource)
     if err != nil {
-      return wasi.Error(module, state, wasm.StateError, err.Error())
+      return wasi.Error(ctx, module, state, wasm.StateError, err.Error())
     }
 
-    return Malloc(ctx, module, data)
+    return wasi.Malloc(ctx, module, data)
   }).
   Export("k8s_lookup")
 ```
