@@ -5,6 +5,7 @@ import IconWhatsapp from "@/assets/icons/IconWhatsapp.svg";
 import IconFacebook from "@/assets/icons/IconFacebook.svg";
 import IconTelegram from "@/assets/icons/IconTelegram.svg";
 import IconPinterest from "@/assets/icons/IconPinterest.svg";
+import IconDiscord from "@/assets/icons/IconDiscord.svg";
 import { SITE } from "@/config";
 
 export const LOCALE = {
@@ -19,12 +20,12 @@ export const SOCIALS = [
     linkTitle: ` ${SITE.title} on Github`,
     icon: IconGitHub,
   },
-  // {
-  //   name: "X",
-  //   href: "https://x.com/username",
-  //   linkTitle: `${SITE.title} on X`,
-  //   icon: IconBrandX,
-  // },
+  {
+    name: "Discord",
+    href: "https://discord.gg/tHCRKg6s7Z",
+    linkTitle: `${SITE.title} Discord Server`,
+    icon: IconDiscord,
+  },
   // {
   //   name: "LinkedIn",
   //   href: "https://www.linkedin.com/in/username/",
