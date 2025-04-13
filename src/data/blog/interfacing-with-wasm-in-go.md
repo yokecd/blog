@@ -13,6 +13,7 @@ description: >
   integrate it with system resources through a hands-on exploration of Host and
   Guest interactions.
 ---
+
 **[Yoke](https://yokecd.github.io/docs) is a package manager for Kubernetes that uses WebAssembly as its package format. However, there isn't a lot of information or many guides available on how to leverage WebAssembly (WASM) or the WebAssembly System Interface (WASI). From [Yoke](https://github.com/yokecd/yoke)'s perspective, WebAssembly is too valuable a tool to be kept under wraps. The following post explores what I have learned about WASM/WASI while building Yoke. Enjoy!**
 
 <hr />
@@ -482,4 +483,3 @@ I hope this deep dive into WebAssembly interfacing inspires you to experiment an
 
 I, the author, am not an expert at technical writing, nor WebAssembly. If anything feels wrong or can be better expressed
 please suggest an edit to this post! Thanks for reading!
-

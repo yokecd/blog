@@ -10,7 +10,7 @@ export interface Props extends CollectionEntry<"blog"> {
 
 const { variant = "h2", data, id, filePath } = Astro.props;
 
-const { title, pubDatetime, modDatetime, description } = data;
+const { title, pubDatetime, modDatetime, description, workInProgress } = data;
 
 const headerProps = {
   style: { viewTransitionName: slugifyStr(title) },
@@ -25,9 +25,15 @@ const headerProps = {
   >
     {
       variant === "h2" ? (
-        <h2 {...headerProps}>{title}</h2>
+        <h2 {...headerProps}>
+          {workInProgress && "Work In Progres: "}
+          {title}
+        </h2>
       ) : (
-        <h3 {...headerProps}>{title}</h3>
+        <h3 {...headerProps}>
+          {workInProgress && "Work In Progress: "}
+          {title}
+        </h3>
       )
     }
   </a>
