@@ -1,13 +1,13 @@
 ---
 author: David Desmarais-Michaud
-pubDatetime: 2025-28-10T03:00:03.478Z
+pubDatetime: 2025-04-30
 title: Dynamic Airways -- Redefining Kubernetes Application Lifecycle as Code
 slug: dynamic-airways
 featured: true
 workInProgress: true
 tags:
   - Yoke
-description: |
+description: >
   Explore how Yoke transforms Kubernetes application management by enabling type-safe, code-driven workflows.
   This post demonstrates building a dynamic resource system with Yoke's "Dynamic Airways" to tackle real-world scenarios like automated deployment restarts when secrets change --
   all without writing YAML.
