@@ -13,73 +13,98 @@ description: |
   all without writing YAML.
 ---
 
+<style>
+  .notice {
+    color: orange;
+    border: 2px solid orange;
+    border-radius: 5px;
+    font-size: 0.9em;
+    font-style: italic;
+    padding: 5px 10px;
+  }
+</style>
+
 ## Foreword
 
 This blog post is going to be difficult to write.
 
-And that's because the Yoke project is so very cool. When I started writing Yoke, the only thing that I wanted to achieve
-was to write the logic I normally would write in helm chart as regular code. Because encoding deployment logic into a template
-seems farcical to me. But what ended up happening is that I built an Application-Life cycle management ecosystem for code.
+That’s because the Yoke project has grown far beyond what I originally envisioned. When I started working on Yoke, my only goal was to write the kind of logic I’d normally cram into a Helm chart—but as regular code. Because honestly, encoding deployment logic into a template feels farcical to me.
 
-You can say the project got a way from me. And not because I wanted to add features, but because yoke is cool. Something just works.
+But somewhere along the way, Yoke became something more. I accidentally built a Kubernetes Resource Management Ecosystem—as Code.
 
-The end goal of this blog post is to demonstrate a new feature called "Dynamic Airways". However, every time I sat down to write it, it
-would come out like a manual in that I would need to build so much context because at this point in time the project is little known.
-And I hated that. So instead of writing in the tone of a formal product, and introducing features slowly and giving their rational, I
-want to do something different. I want to ask you, the reader to suspend disbelief, and just follow me on this journey towards dynamic airways.
-The only thing you need is a burning desire to work in a type-safe environment with actual code. Yes. Code that is code.
+You could say the project got away from me.
 
-With that in mind, let's begin.
+And not because I was chasing features for the sake of it, but because Yoke is just… cool. Something about it clicks, and it keeps building on itself.
+
+The point of this blog post is to introduce a new feature called Dynamic Airways. But every time I tried to write about it, it ended up sounding like a manual—because I felt the need to explain everything from the ground up. The project isn’t widely known yet, and that pressure to explain every detail? I hated it.
+
+So I’m doing something different.
+
+Instead of presenting this like a formal product announcement—explaining features one by one and justifying each design choice—I want to try a different approach. I want to ask you, the reader, to suspend disbelief and come along for the ride as we head toward Dynamic Airways.
+
+All you need is a burning desire to break away from the current status quo and work in a type-safe environment with actual code. Yes. Code that is code.
+
+With that in mind, let’s begin.
 
 ## What are we trying to achieve?
 
-We want to demo Dynamic Airways by solving a standard problem in Kubernetes: restarting a deployment when a secret changes.
+We want to demo Dynamic Airways by solving a classic Kubernetes problem: restarting a deployment when a secret changes.
 
-If you don't know what an Airway is, that's ok. We will get to it later.
+If you don’t know what an Airway is yet, that’s totally fine—we’ll get to it shortly. For now it should be sufficient to say that an Airway is akin to a CRD
+that represents an Application we want to deploy.
 
-First let's define our demo more specifically. The question above is a common question that newcomers to Kubernetes ask.
-And just like answers are usually steeped in and complicated by the real world, I want our solution to feel like an abridged version of the real world.
+First, let’s define our demo a bit more clearly. The question above is a common one that newcomers to Kubernetes often ask. And just like most real-world answers, the solution tends to be steeped in complexity and messy details. What I want instead is for our solution to feel like an abridged version of reality—real enough to make sense, but streamlined for clarity.
 
-In the real world, secrets are not managed directly by the Kubernetes API, but are kept in secret storage engines such as AWS Secret Manager or Vault.
+In the real world, secrets usually aren’t managed directly in Kubernetes. One common approach is to store them in dedicated secret management systems like AWS Secrets Manager or HashiCorp Vault.
 
-So let's take a quick detour into secret management, and let's define a common setup.
+So let’s take a quick detour into secret management and outline a typical setup:
 
-- Our secrets live in an external-secret-store such as Hashicorp Vault.
-- Our deployment wants to use these secrets in its environment variables.
+- Our secrets live in an external secret store, like HashiCorp Vault.
+- Our application wants to use these secrets as environment variables.
 
-We will then want to write some Application logic to deploy applications that use these secrets, and somehow redeploys if the secret in vault is updated.
+Our goal is to write some application logic that can deploy an app using these secrets—and, crucially, redeploy it automatically when our external secret is updated.
 
 But one thing at a time. First we must do the --
 
 ## Setup
 
-For our demo, to have this example be self-contained, everything must run inside of a temporary cluster.
+<div class="notice">
+  All the code for the demo can be found unabridged within yoke's <a href="https://github.com/yokecd/examples">examples</a> repository.
+</div>
 
-For this ephemeral cluster, I will be using Kind. If you don't have Kind yet you can install it via the Go Toolchain or your favourite package manager:
+For this demo to be self-contained, everything needs to run inside a temporary Kubernetes cluster.
+
+We'll use [Kind](https://kind.sigs.k8s.io/) for that. If you don’t have Kind installed, you can grab it via the Go toolchain or your favorite package manager:
 
 ```bash
+# via Go
 go install sigs.k8s.io/kind@latest
 
+# alternatively
 brew install kind
 ```
 
-Next we are going to need to install Vault into our cluster. As well as the external-secret-operator (ESO) to get those secrets into regular kubernetes secrets.
+Next, we need to install [Vault](https://www.hashicorp.com/en/products/vault) into our cluster, along with the [External Secrets Operator](https://external-secrets.io/latest/) (ESO) to sync those external secrets into standard Kubernetes Secret resources.
 
-With yoke we need to write a program that writes the resources we want back to stdout as json. It sounds like we have already arrived at a dead end. Are we really
-going to hand write the code that would return the resources needed to install Vault? And the ESO?
+At this point, you might be wondering: with Yoke, we’re supposed to write a program that emits the Kubernetes resources we want as JSON to stdout. That sounds great… until you realize we’d need to handwrite all the code required to install Vault and ESO.
 
-Writing that all from scratch sounds unreasonable. And even I, who has a tendency to rewrite everything from scratch, agree.
+That’s not just tedious—it’s unreasonable. And even I, someone with a strong tendency to rewrite everything from scratch, is forced to agree.
 
-So let's use their Helm Charts. But let's not use Helm. I dream of a world in which we don't write Helm Charts anymore, but at this stage it would be denial
-to pretend that they don't exist and that we can't use them. If any new package management system is going to succeed, it needs to be able to leverage what
-already exists otherwise we have to restart from scratch. Fortunately yoke does so. At least if we stay in the Go ecosystem.
+So instead, let’s use their Helm charts.
 
-This is because yoke works by compiling programs to WebAssembly. There is no reason we cannot simply compile Helm into our program. We can just embed the charts we need
-and execute them by importing Helm. Now obviously there's a lot of leg work and its easier said than done, but the yoke project is dedicated to customer service and has
-already handed all of that.
+But—wait—we’re not going to use Helm.
 
-First we start by installing yoke's `helm2go` CLI, which is a script to download a helm chart, generate types for the values file if possible, and output a Go package to
-make it as easy as possible to use.
+I dream of a world where we don’t write Helm charts anymore. But let’s be real: they exist, they work, and pretending they don’t would be pure denial. If any new package management system is going to succeed, it must be able to leverage what’s already out there. Otherwise, we’re forced to start from zero.
+
+Fortunately, Yoke does just that—especially if you stay within the Go ecosystem.
+
+Yoke works by executing WebAssembly (wasm) modules that are nothing more than programs that read inputs from stdin and write desired resources to stdout.
+
+So there’s no reason we can’t simply compile Helm into our program. This is the freedom that using code provides us with.
+
+We can embed the charts we need and invoke them directly via Go. Obviously, there’s a lot of plumbing involved, and it’s easier said than done—but Yoke is a project dedicated to developer experience. That heavy lifting? Already handled.
+
+We’ll start by installing Yoke’s helm2go CLI. It’s a tool that fetches a Helm chart, generates Go types for its values (when possible), and produces a Go package with the helm chart embedded within to make it as seamless as possible to use.
 
 ```bash
 # install helm2go
@@ -166,14 +191,44 @@ func main() {
 }
 ```
 
-For those of you that want to skip ahead and just see the actual code used for the demo, it can be found [here](https://github.com/yokecd/examples/blob/main/demos/dynamic-mode/setup/main.go).
-All glorious 120 lines of code that render the Vault and ESO charts, as well as creates a Secret-Store representing our Vault Backend.
+We can do the same for the External-Secrets-Operator chart, and execute both charts in a single program.
 
-But talking about creating our vault secret store backend, we run into an issue. The secret-store backend is a custom resource of the
-vault installation. We can only create it after having installed vault. Are we cooked? No because yoke let's us specify our resources in stages
-if we want! The output of a flight to stdout can either be a resource, a list of resources, or a list of list of resources in other words stages.
+```go
+vaultResources, err := vault.RenderChart(flight.Release()+"-vault", flight.Namespace(), &cfg.Vault)
+if err != nil {
+  return fmt.Errorf("failed to render vault chart: %v", err)
+}
 
-Hence we can install all CRDs before we create any custom resources.
+esoResources, err := eso.RenderChart(flight.Release()+"-eso", flight.Namespace(), &cfg.ESO)
+if err != nil {
+  return fmt.Errorf("failed to render eso chart: %v", err)
+}
+
+var resources flight.Resources
+for _, resource := range append(vaultResources, esoResources...) {
+  resources = append(resources, resource)
+}
+```
+
+For those of you who want to skip ahead and just see the actual code used in the demo, you can find it [here](https://github.com/yokecd/examples/blob/main/demos/dynamic-mode/setup/main.go).
+
+All glorious 120 lines of code—rendering the Vault and ESO charts, and creating a `SecretStore` to represent our Vault backend.
+
+But speaking of that Vault `SecretStore` backend, we run into a bit of a problem.
+
+The `SecretStore` resource is a _custom resource_ defined by the Vault installation. That means we can only create it _after_ Vault—and its CRDs—are installed. Are we cooked? (I’m probably too old to say that, but I try.)
+
+Nope—because Yoke lets us specify our resources in **stages**!
+
+The output of a Yoke flight to `stdout` can be:
+
+- A single resource,
+- A list of resources,
+- **Or** a list of lists of resources—in other words, _stages_.
+
+We’re no longer confined by Helm’s flimsy `preInstall`/`postInstall` hook annotations. We can explicitly control ordering and ensure that CRDs land before the custom resources that depend on them.
+
+So yes, we can install all CRDs _first_, and only then create the custom resources like `SecretStore`. Crisis averted.
 
 ```go
  var crds, other flight.Resources
@@ -188,25 +243,28 @@ Hence we can install all CRDs before we create any custom resources.
  return json.NewEncoder(os.Stdout).Encode(flight.Stages{crds, other})
 ```
 
-So our setup really just boils down to a couple simple steps:
+So our setup really just boils down to a few simple steps:
 
-- generate some Go packages for the charts we want to use such as vault and external-secrets-operator.
-- render those charts in code to get their resources
-- add any other resources we may want in our setup such as vault-token secret or vault-backend secret store
-- encode our resources in stages: CRDs first, everything else after.
+- Generate some Go packages for the charts we want to use, like Vault and the External Secrets Operator.
+- Render those charts in code to get their resources.
+- Add any other resources we need for our setup, such as a `vault-token Secret` and `SecretStore` for our Vault backend.
+- Encode our resources in **stages**: CRDs first, everything else after.
 
-And now we have a functional setup, ready for us to build applications that use the secrets that we might store in vault.
+And just like that, we have a functional setup—ready for us to build applications that use secrets stored in Vault.
 
-## Let's build our Application
+## Let's Build Our Application
 
-Before we build our application. Let's discuss the matter of the inputs.
-We clearly need to be able to choose the image we want to deploy, and map secrets from vault to our environment.
+Before we build our application, let’s take a moment to talk about inputs.
 
-But beyond that, isn't it tiresome to deploy things into our cluster via helm or yoke? In the sense that our releases
-are made from the client-side, and Kubernetes has no native awareness of what we have released.
+Clearly, we need to be able to choose the image we want to deploy, and we need a way to map secrets from Vault into our application’s environment.
 
-It would be nice, if our input wasn't just some arbitrary input to the release, but instead a fully fledged Kubernetes API.
-Let's postulate that our Application could be something like this:
+But beyond that—doesn’t it feel a little awkward that deploying things into the cluster via Helm or Yoke happens entirely from the _client side_? Kubernetes itself has no native awareness of what we’ve released.
+
+Wouldn’t it be nicer if our input wasn’t just some arbitrary values file or CLI argument, but instead a fully-fledged Kubernetes API resource?
+
+That way, Kubernetes could validate our inputs on our behalf, enforce schema correctness, and even let us set up proper RBAC rules around who can create or modify these resources.
+
+Let’s postulate that our `Application` could look something like this:
 
 ```yaml
 apiVersion: examples.com/v1
@@ -226,17 +284,15 @@ spec:
       key: hello
 ```
 
-And that Kubernetes would then be able to validate the inputs on our behalf, and set appropriate RBAC rules and so on.
-
 **What a world that would be.**
 
-And with the yoke's air traffic controller this is possible. That is what the mysterious Airway is about.
-You build a custom resource definition and point it to a code based implementation via a URL, and the Air Traffic controller
-takes care of the rest.
+And with Yoke’s _Air Traffic Controller_, this is actually possible. That’s what the mysterious _Airway_ is all about.
 
-This way you don't need to build your own controller. You just need to focus on reading in your custom resource, and outputting the resources you want.
+You define a Custom Resource Definition (CRD) and point it to a code-based implementation via a URL. From there, the Air Traffic Controller takes care of the rest.
 
-So let's define our custom resource in code such that its type would match our resource given above.
+No need to write your own controller from scratch. You just focus on reading your custom resource and outputting the Kubernetes resources you want in response.
+
+So let’s define our custom resource in code, making sure its type matches the `Application` resource we sketched out above.
 
 ```go
 package v1
@@ -274,19 +330,19 @@ type BackendSpec struct {
 }
 ```
 
-## Implementing our Backend's flight
+## Implementing Our Backend's Flight
 
-Next we can create a program that would consume this type and transform it to the resources that we want our package to be.
+Next, we can create a program that consumes this type and transforms it into the resources that we want our package to produce.
 
 What should those resources be?
 
 - Definitely a deployment.
-- We will need an external-secret.
-- We will define a secret (this may seem unnecessary now since external secrets can create secrets for us but this will make more sense later)
+- We will need an external secret.
+- We'll also define a secret (this might seem unnecessary right now, since external secrets can create secrets for us, but it will make more sense later).
 
-So let's start.
+So let’s get started.
 
-First some boilerplate. This is incidentally not yoke specific boilerplate. I write the same lines for almost every single executable Go package I write.
+First, some boilerplate. Incidentally, this isn’t Yoke-specific boilerplate—it's the kind of setup I write for almost every executable Go package I create.
 
 ```go
 package main
@@ -317,15 +373,17 @@ func run() error {
 }
 ```
 
-Let's add our secret resource. But what do we have as data to put in if our external secret that we plan to add will be driving the show?
-The fact of the matter is that we need the secret to be owned by our release for the "dynamic" aspect of airway to work. I won't say more about that for now.
-But also, we will want to have the secret so that we can hash its data and use that as a label on our deployment. This way if the secret's data changes, the label changes,
-and the deployment restarts.
+Let’s add our secret resource. But what data do we put in it if our external secret (which we plan to add) is driving the show?
 
-**But how do we get the secret's data?**
+The truth is, we need the secret to be owned by our release for the "dynamic" aspect of Airway to work. I won’t say more about that for now.
 
-We compile to WebAssembly and so we cannot make arbitrary network calls. However, via the magic of WASI yoke provides the ability to lookup resources in the same release.
-So we can actually fetch the secret's data in the cluster. Maybe it'll be better if I just show you.
+But we also want the secret so that we can hash its data and use that hash as a label on our deployment. This way, if the secret’s data changes, the label will change, and the deployment will restart.
+
+**But how do we get the secret’s data?**
+
+We compile to WebAssembly, so we can't make arbitrary network calls. However, thanks to the magic of WASI, Yoke provides the ability to look up resources within the same release.
+
+In other words, we can actually fetch the secret’s data from within the cluster. But instead of talking about it, maybe it’s better if I just show you.
 
 ```go
 // We include this import from the yoke project which contains our high-level wasi api for kubernetes.
@@ -357,10 +415,11 @@ secret := &corev1.Secret{
 }
 ```
 
-We create a secret using the same name and namespace as our backend instance. For the data, we query the k8s api via our wasi interface.
-If there's an error or no data we simply return an empty map. But if the secret exists in the cluster we just reuse the same data for our secret.
+We create a secret using the same name and namespace as our backend instance. For the data, we query the Kubernetes API via our WASI interface.
 
-Next we will need to hash the secret data. This way we can add a label to our deployment with the hash of our secrets. When a secret is modified, the hash changes and deployment label is updated. This leads to the deployment being restarted.
+If there’s an error or no data is returned, we simply return an empty map. But if the secret exists in the cluster, we reuse the same data for our secret.
+
+Next, we need to hash the secret data. This will allow us to add a label to our deployment using the hash of the secret. When the secret is modified, the hash changes, and the deployment label is updated. This triggers a restart of the deployment.
 
 ```go
 secretHash := func() string {
@@ -461,19 +520,19 @@ externalSecret := &eso.ExternalSecret{
 }
 ```
 
-With that we've built all three resources in pure Go:
+With that, we’ve built all three resources in pure Go:
 
-- A secret that just reads its values from the cluster
-- A deployment that contains a hash of the secrets data as a label
-- An external secret binding the vault secrets to our kubernetes secret.
+- A secret that reads its values from the cluster.
+- A deployment that includes a hash of the secret’s data as a label.
+- An external secret that binds the Vault secrets to our Kubernetes secret.
 
-All we have left to do is write them as json over stdout:
+All that's left is to write them as JSON to stdout:
 
 ```go
 return json.NewEncoder(os.Stdout).Encode(flight.Resources{deployment, secret, externalSecret})
 ```
 
-And voila. We have defined the kubernetes resource logic for our backend type.
+And voila. We have defined the Kubernetes resource logic for our Backend type.
 
 We simply need to compile it to WebAssembly and host it somewhere.
 
@@ -481,16 +540,21 @@ We simply need to compile it to WebAssembly and host it somewhere.
 GOOS=wasip1 GOARCH=wasm go build -o demos_dynamic_mode_v1_flight.wasm ./demos/dynamic-mode/backend/v1/flight
 ```
 
-The example repository hosts this binary in a github release.
-Although it could have used github container registry and stored it as a container artifact but let's leave that for another day.
+The [examples](https://github.com/yokecd/examples) repository hosts this binary in a [github release](https://github.com/yokecd/examples/releases/tag/latest).
+
+<div class="notice">
+  We could have chose to use a container registry and store the wasm module as a container artifact but let's leave that for another day.
+</div>
+
+Hence, we have defined our logic, compiled it, and published it to a public location.
 
 ## Creating an Airway
 
-By this point, we have most of the things that we need. We have a flight to setup our environment with a Vault instance, and our external-secrets-operator.
+By this point, we have most of the things we need. We have a flight to set up our environment with a Vault instance and our External Secrets Operator.
 
-We have a type that defines our desired CustomResourceDefinition as well as another program to read in a resource of said type and turn that into subresources.
+We have a type that defines our desired CustomResourceDefinition (CRD), along with another program that reads in a resource of that type and transforms it into the necessary subresources.
 
-All that is left is to have that CRD created and bound to its implementing program. Within the context of the yoke Air Traffic Controller, we do this by creating an Airway.
+All that’s left is to create the CRD and bind it to its implementing program. In the context of Yoke's _Air Traffic Controller_, we do this by creating an _Airway_.
 
 ```go
 package main
@@ -559,29 +623,19 @@ func main() {
 
 And with this piece of code, we are off to the races.
 
-However, before we start running commands and experimenting with our cluster, I owe the reader an explanation of what `dynamic` mode is.
+However, before we start running commands and experimenting with our cluster, I owe you an explanation of what _dynamic_ mode actually is.
 
-Normally when a custom resource instance of a CRD created by an Airway (that's a mouthful) is created, its subresources are created as specified by its flight implementation and the story ends there.
-If a user or other third-party actor like a controller modifies one of the subresources nothing happens. No state will be reconciliated until a change to the parent custom-resource is made and a new desired state is to be applied.
+Normally, when a custom resource instance of a CRD created by an Airway (that’s a mouthful!) is created, its subresources are created as specified by its flight implementation, and the story ends there.
 
-<style>
-  .notice {
-    color: orange;
-    border: 2px solid orange;
-    border-radius: 5px;
-    font-size: 0.9em;
-    font-style: italic;
-    padding: 5px 10px;
-  }
-</style>
+If a user or another third-party actor, like a controller, modifies one of the subresources, nothing happens. No state will be reconciled until a change to the parent custom resource is made and a new desired state is applied.
 
 <div class="notice">
 Caveat: there is an option to detect drift on an interval and reset cluster state to desired state but this is not very reactive.**
 </div>
 
-However, with dynamic mode, as soon as subresource is modified the entire parent-resource is requeued for evaluation. What's more, when it is reevaluated it does not need to yield the old desired state and can generate a new one.
+However, with _dynamic_ mode, as soon as a subresource is modified, the entire parent resource is requeued for evaluation. What’s more, when it is reevaluated, it doesn’t need to yield the old desired state—it can generate a new one.
 
-Which is the complete trick behind all the smokes and mirrors about how we restart our deployment. When the external-secret-operator sees a secret change, it will update the secret which is a subresource of our Backend type we are introducing. Since the backend is owned by a dynamic airway it will be requeued for evaluation and the deployment's label will be updated with a new hash of the secret values. Case closed.
+And that's the complete trick behind all the smokes and mirrors that allow us to restart our deployment. When the External Secrets Operator sees a secret change, it updates the secret, which is a subresource of our `Backend` type. Since the `Backend` is owned by a dynamic Airway, it gets requeued for evaluation. The deployment's label will then be updated with a new hash of the secret's values. Case closed.
 
 ## Running it.
 
@@ -644,31 +698,32 @@ spec:
       path: secret/demo
       key: hello
 EOF
+```
 
-# Run this commented command at your leisure to update the deployment by changing the secret in vault.
+If we modify the vault secret that our `Backend` points to, we shall see the deployment restart on its own!
 
-# VAULT_ADDR=http://localhost:8200 VAULT_TOKEN=root vault kv put secret/demo hello=fromtheotherside
+```bash
+VAULT_ADDR=http://localhost:8200 VAULT_TOKEN=root vault kv put secret/demo hello=fromtheotherside
 ```
 
 ## Conclusion
 
-There's a lot to unpack.
+There’s a lot to unpack here.
 
-Especially given how new yoke is and that our mental model as a community has not shifted from interfacing with Kubernetes as a set of annotated yaml manifests to logic encoded as code.
+Especially given how new Yoke is and how our collective mental model as a community has yet to shift from interfacing with Kubernetes via a set of annotated YAML manifests to logic that’s encoded as code.
 
-We wrote a flight that combined two charts by generating code from their chart repositories. And with better typing support than they have. As well as adding resources that we wanted as part of our setup such as the vault secret-store. And we did this by using the actual types from the Vault project. We didn't have to guess as to what structured yaml we needed with what keys. And all of this combined nicely.
+We wrote a flight that combined two charts by generating code from their chart repositories. And we did it with better typing support than those charts have, while also adding resources we wanted as part of our setup—like the Vault `SecretStore`. We did all of this using the actual types from the Vault project. No need to guess what structured YAML we needed or what keys to use. And it all combined together seamlessly.
 
-We used yoke to deploy our setup in stages, CRDs first and all other resources after. We didn't need annotations to describe post or pre-install hooks.
+We used Yoke to deploy our setup in stages—CRDs first, and all other resources afterward. We didn’t need to rely on annotations to describe post- or pre-install hooks.
 
-We defined a type to represent a new custom resource in our cluster and implemented a program to transform a value of that type into the set of resources we want to deploy.
-We were able to use hashing functions, for loops and conditionals in a proper type-safe environment.
+We defined a type to represent a new custom resource in our cluster and implemented a program to transform a value of that type into the resources we want to deploy. We were able to use hashing functions, loops, and conditionals in a proper type-safe environment.
 
-Our implementation is able to read cluster-state allowing us to respond to changes in our cluster.
+Our implementation is able to read cluster state, allowing us to respond to changes in our cluster.
 
-We created an Airway to define this CRD to a url of our module we just implemented. We inferred the openapi schema with reflection. We told the ATC to treat this airway as dynamic so that it automatically responds to changes to its subresources and requeues it for evaluation.
+We created an Airway to define this CRD, pointing it to the URL of our module. We inferred the OpenAPI schema with reflection. We instructed the Air Traffic Controller (ATC) to treat this Airway as dynamic so that it automatically responds to changes in its subresources and requeues itself for evaluation.
 
-And with these components, we are now able to create applications that respond to changes in the cluster and self-adjust.
+With these components, we can now create applications that respond to changes in the cluster and self-adjust.
 
-We did all this without defining anything in yaml, without annotating resources to point at each other like bad C++ pointers for Controllers to do the logic that we can specify ourselves in code.
+And we did all of this without defining anything in YAML, without annotating resources to point at each other like bad C++ pointers for controllers to perform logic that we can now specify ourselves in code.
 
-And I think thats pretty beautiful, and I hope you do too.
+And I think that’s pretty beautiful. I hope you do too.
