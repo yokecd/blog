@@ -46,6 +46,24 @@ All you need is a burning desire to break away from the current status quo and w
 
 With that in mind, let’s begin.
 
+## A Word on Terminology
+
+Actually, hit the breaks before we start. We need a quick work on naming.
+
+Naming things is hard. And unfortunately, with Yoke, a lot of things are new—and new is not always easy.
+
+To make things a little less confusing, here’s a quick primer on terms you may come across.
+
+Context: Helm is named after the steering wheel of a naval ship. Yoke, on the other hand, is the steering component of an airplane.
+
+That’s why Helm calls its packages **Charts**, and Yoke calls its packages **Flights**.
+
+With that in mind, here’s a quick glossary to help make sense of some of the terms used in this article:
+
+- **Flights**: Programs that read from `stdin` and write Kubernetes resources to `stdout`. Usually compiled to WebAssembly.
+- **Air Traffic Controller (ATC)**: The server-side controller included in the Yoke project. It watches for `Airway` resources and executes Flights.
+- **Airways**: A `CustomResource` provided by the Yoke project when the ATC is installed. It defines a `CustomResourceDefinition` and binds it to a corresponding Flight.
+
 ## What are we trying to achieve?
 
 We want to demo Dynamic Airways by solving a classic Kubernetes problem: restarting a deployment when a secret changes.
