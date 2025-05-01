@@ -23,6 +23,8 @@ description: >
   }
 </style>
 
+## Table of Contents
+
 ## Foreword
 
 This blog post is going to be difficult to write.
