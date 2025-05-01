@@ -29,13 +29,13 @@ description: >
 
 This blog post is going to be difficult to write.
 
-That’s because the Yoke project has grown far beyond what I originally envisioned. When I started working on Yoke, my only goal was to write the kind of logic I’d normally cram into a Helm chart—but as regular code. Because honestly, encoding deployment logic into a template feels farcical to me.
+That’s because the [Yoke](https://github.com/yokecd/yoke) project has grown far beyond what I originally envisioned. When I started working on [Yoke](https://github.com/yokecd/yoke), my only goal was to write the kind of logic I’d normally cram into a Helm chart—but as regular code. Because honestly, encoding deployment logic into a template feels farcical to me.
 
-But somewhere along the way, Yoke became something more. I accidentally built a Kubernetes Resource Management Ecosystem—as Code.
+But somewhere along the way, [Yoke](https://github.com/yokecd/yoke) became something more. I accidentally built a Kubernetes Resource Management Ecosystem—as Code.
 
 You could say the project got away from me.
 
-And not because I was chasing features for the sake of it, but because Yoke is just… cool. Something about it clicks, and it keeps building on itself.
+And not because I was chasing features for the sake of it, but because [Yoke](https://github.com/yokecd/yoke) is just… cool. Something about it clicks, and it keeps building on itself.
 
 The point of this blog post is to introduce a new feature called Dynamic Airways. But every time I tried to write about it, it ended up sounding like a manual—because I felt the need to explain everything from the ground up. The project isn’t widely known yet, and that pressure to explain every detail? I hated it.
 
