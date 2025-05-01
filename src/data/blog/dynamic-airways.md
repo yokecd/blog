@@ -788,3 +788,20 @@ With these components, we can now create applications that respond to changes in
 And we did all of this without defining anything in YAML, without annotating resources to point at each other like bad C++ pointers for controllers to perform logic that we can now specify ourselves in code.
 
 And I think that’s pretty beautiful. I hope you do too.
+
+## TL;DR
+
+In this post, we use **Yoke** to solve a common Kubernetes problem: restarting a deployment when a secret changes.
+
+We:
+
+- Spun up a local cluster using **Kind**.
+- Installed **Vault** and **External Secrets Operator** using Helm charts, without actually using Helm—thanks to Yoke's `helm2go`.
+- Wrote a **Flight** in Go to generate our resources as code, rather than YAML.
+- Created a **custom resource definition (CRD)** that defines how we want to deploy applications.
+- Used **dynamic Airway mode** so that when the secret changes, our deployment auto-updates based on a hash of its contents.
+- Avoided writing controllers or managing hook annotations—because Yoke's _Air Traffic Controller_ handles reactivity for us when using _dynamic mode Airways_.
+
+All of this happened in typed Go code, compiled to WebAssembly, and orchestrated through Yoke’s Air Traffic Controller.
+
+No YAML. No brittle annotations. Just actual logic in code.
