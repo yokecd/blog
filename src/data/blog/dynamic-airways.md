@@ -4,7 +4,6 @@ pubDatetime: 2025-04-30
 title: Dynamic Airways -- Redefining Kubernetes Application Lifecycle as Code
 slug: dynamic-airways
 featured: true
-workInProgress: true
 tags:
   - Yoke
 description: >
