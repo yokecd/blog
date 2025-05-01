@@ -48,7 +48,7 @@ With that in mind, let’s begin.
 
 ## A Word on Terminology
 
-Actually, hit the breaks before we start. We need a quick work on naming.
+Actually, hit the brakes before we start. We need a quick word on naming.
 
 Naming things is hard. And unfortunately, with Yoke, a lot of things are new—and new is not always easy.
 
@@ -228,6 +228,52 @@ for _, resource := range append(vaultResources, esoResources...) {
 }
 ```
 
+With the combination of these two charts, we have a decent base for our setup. One last thing we may want to add is a vault external secrets `SecretStore` and a secret for its authenticating with it.
+
+```go
+vaultTokenSecret := &corev1.Secret{
+  TypeMeta: metav1.TypeMeta{
+    APIVersion: "v1",
+    Kind:       "Secret",
+  },
+  ObjectMeta: metav1.ObjectMeta{
+    Name: "vault-token",
+  },
+  // In out simplified local example, we are running vault in dev mode, hence the token is simply "root".
+  StringData: map[string]string{"token": "root"},
+  Type:       corev1.SecretTypeOpaque,
+}
+
+// v1beta1 corrresponds to the package: github.com/external-secrets/external-secrets/apis/externalsecrets/v1beta1
+vaultBackend := &v1beta1.SecretStore{
+  TypeMeta: metav1.TypeMeta{
+    APIVersion: v1beta1.SchemeGroupVersion.Identifier(),
+    Kind:       "SecretStore",
+  },
+  ObjectMeta: metav1.ObjectMeta{
+    Name: "vault-backend",
+  },
+  Spec: v1beta1.SecretStoreSpec{
+    Provider: &v1beta1.SecretStoreProvider{
+      Vault: &v1beta1.VaultProvider{
+        Server:  fmt.Sprintf("http://%s-vault:8200", flight.Release()),
+        Path:    ptr.To("secret"),
+        Version: v1beta1.VaultKVStoreV2,
+        Auth: &v1beta1.VaultAuth{
+          TokenSecretRef: &esmeta.SecretKeySelector{
+            Name: "vault-token",
+            Key:  "token",
+          },
+        },
+      },
+    },
+  },
+}
+
+// And we add them to the list of resources we want to output from our flight!
+resources = append(resources, vaultTokenSecret, vaultBackend)
+```
+
 For those of you who want to skip ahead and just see the actual code used in the demo, you can find it [here](https://github.com/yokecd/examples/blob/main/demos/dynamic-mode/setup/main.go).
 
 All glorious 120 lines of code—rendering the Vault and ESO charts, and creating a `SecretStore` to represent our Vault backend.
@@ -316,35 +362,33 @@ So let’s define our custom resource in code, making sure its type matches the 
 package v1
 
 import (
- metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
- "github.com/yokecd/yoke/pkg/openapi"
+  metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
- APIVersion  = "examples.com/v1"
- KindBackend = "Backend"
+  APIVersion  = "examples.com/v1"
+  KindBackend = "Backend"
 )
 
 // Backend is the type representing our CustomResource.
 // It contains Type and Object meta as found in typical kubernetes objects and a spec.
 type Backend struct {
- metav1.TypeMeta   `json:",inline"`
- metav1.ObjectMeta `json:"metadata,omitzero"`
- Spec              BackendSpec `json:"spec"`
+  metav1.TypeMeta   `json:",inline"`
+  metav1.ObjectMeta `json:"metadata,omitzero"`
+  Spec              BackendSpec `json:"spec"`
 }
 
 type Secrets map[string]struct {
- Path string `json:"path"`
- Key  string `json:"key"`
+  Path string `json:"path"`
+  Key  string `json:"key"`
 }
 
 // Our Backend Specification
 type BackendSpec struct {
- Image                  string           `json:"image"`
- Replicas               int32            `json:"replicas"`
- Secrets                Secrets          `json:"secrets,omitempty"`
- SecretRefreshInternval openapi.Duration `json:"refreshInterval,omitzero"`
+  Image                  string           `json:"image"`
+  Replicas               int32            `json:"replicas"`
+  Secrets                Secrets          `json:"secrets,omitempty"`
+  SecretRefreshInternval metav1.Duration  `json:"refreshInterval,omitzero"`
 }
 ```
 
@@ -433,7 +477,7 @@ secret := &corev1.Secret{
 }
 ```
 
-We create a secret using the same name and namespace as our backend instance. For the data, we query the Kubernetes API via our WASI interface.
+We create a secret using the same name and namespace as our _Backend_ instance. For the data, we query the Kubernetes API via our WASI interface.
 
 If there’s an error or no data is returned, we simply return an empty map. But if the secret exists in the cluster, we reuse the same data for our secret.
 
@@ -464,32 +508,32 @@ deployment := &appsv1.Deployment{
     Replicas: &backend.Spec.Replicas,
     Selector: &metav1.LabelSelector{MatchLabels: selector},
     Template: corev1.PodTemplateSpec{
-    ObjectMeta: metav1.ObjectMeta{
-      Labels: labels,
-    },
-    Spec: corev1.PodSpec{
-      Containers: []corev1.Container{
-      {
-        Name:  backend.Name,
-        Image: backend.Spec.Image,
-        Env: func() []corev1.EnvVar {
-        var result []corev1.EnvVar
-        for name, value := range backend.Spec.Secrets {
-          result = append(result, corev1.EnvVar{
-          Name: name,
-          ValueFrom: &corev1.EnvVarSource{
-            SecretKeyRef: &corev1.SecretKeySelector{
-            LocalObjectReference: corev1.LocalObjectReference{Name: secret.Name},
-            Key:                  value.Key,
-            },
+      ObjectMeta: metav1.ObjectMeta{
+        Labels: labels,
+      },
+      Spec: corev1.PodSpec{
+        Containers: []corev1.Container{
+          {
+            Name:  backend.Name,
+            Image: backend.Spec.Image,
+            Env: func() []corev1.EnvVar {
+              var result []corev1.EnvVar
+              for name, value := range backend.Spec.Secrets {
+                result = append(result, corev1.EnvVar{
+                  Name: name,
+                  ValueFrom: &corev1.EnvVarSource{
+                    SecretKeyRef: &corev1.SecretKeySelector{
+                      LocalObjectReference: corev1.LocalObjectReference{Name: secret.Name},
+                      Key:                  value.Key,
+                    },
+                  },
+                })
+              }
+              return result
+            }(),
           },
-          })
-        }
-        return result
-        }(),
+        },
       },
-      },
-    },
     },
   },
 }
