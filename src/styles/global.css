@@ -57,3 +57,12 @@ html[data-theme="dark"] {
 .active-nav {
   @apply underline decoration-wavy decoration-2 underline-offset-4;
 }
+
+.notice {
+  color: orange;
+  border: 2px solid orange;
+  border-radius: 5px;
+  font-size: 0.9em;
+  font-style: italic;
+  padding: 5px 10px;
+}

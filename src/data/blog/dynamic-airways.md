@@ -12,17 +12,6 @@ description: >
   all without writing YAML.
 ---
 
-<style>
-  .notice {
-    color: orange;
-    border: 2px solid orange;
-    border-radius: 5px;
-    font-size: 0.9em;
-    font-style: italic;
-    padding: 5px 10px;
-  }
-</style>
-
 ## Table of Contents
 
 ## Foreword
