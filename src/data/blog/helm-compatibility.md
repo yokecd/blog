@@ -9,8 +9,8 @@ tags:
   - yoke
   - helm
 description: >
-  Yoke wants to change break away yaml templates but is that break a deal breaker? 
-  Let's explore how Yoke manages to keep backwards compatibility with Helm in a code-first world.
+  Yoke wants to pivot away from Helm and YAML templating — but does that mean throwing the baby out with the bathwater?
+  Let’s explore how Yoke keeps backwards compatibility with Helm in a code-first world.
 ---
 
 ## Table of Contents
