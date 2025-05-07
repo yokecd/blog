@@ -1,7 +1,7 @@
 ---
 author: David Desmarais-Michaud
 pubDatetime: 2025-05-07
-title: Yoke and Helm Compatibility
+title: "Modern Kubernetes: Can we replace Helm?"
 slug: helm-compatibility
 workInProgress: true
 featured: true
@@ -9,7 +9,7 @@ tags:
   - yoke
   - helm
 description: >
-  Yoke wants to pivot away from Helm and YAML templating — but does that mean throwing the baby out with the bathwater?
+  Yoke wants to pivot away from Helm and YAML templating, but does that mean throwing the baby out with the bathwater?
   Let’s explore how Yoke keeps backwards compatibility with Helm in a code-first world.
 ---
 
@@ -67,14 +67,15 @@ So we reach for Jsonnet, CUE, or maybe even Apple’s new PKL.
 
 And while I do think these tools generally improve the situation — offering benefits like reduced whitespace sensitivity or better-integrated typing — I still believe they miss the mark.
 
-That’s because, in my view, the problem with Helm Charts isn’t that the _target_ (YAML) is a poor configuration language.  
+That’s because, in my view, the problem with Helm Charts isn’t that the _target_ (YAML) is a poor configuration language.
 The real issue is that what we _actually want_ is a good way to express a transformation function. Inputs must lead to outputs.
 
 As a software developer, I can’t help but think that the best way to model a transformation from one type of data to another is... well, a function.
 
 Just a plain, old, imperative, boring-looking function or program. If this, then do that. Our bread and butter.
 
-You might disagree on which language or paradigm is best for expressing this kind of transformation.  
+You might disagree on which language or paradigm is best for expressing this kind of transformation.
+
 Maybe a functional language like Haskell is ideal — especially for mapping one type to another, from input to output, from standard input to standard output.
 
 Or maybe Rust with its blazing speed and memory safety?
@@ -85,10 +86,12 @@ Or Go with its tight integration within the Kubernetes ecosystem?
 
 The larger point is this: the best tools we have for handling structured data and producing structured output are programming languages.
 
-That’s the position Yoke takes.  
+That’s the position Yoke takes.
+
 Of course, it wouldn’t be feasible to support just _any_ source code, nor would it be safe to execute arbitrary binaries.
 
-That’s why — as luck would have it — Yoke supports WebAssembly as a shared target for code execution.  
+That’s why, as luck would have it, Yoke supports WebAssembly as a shared target for code execution.
+
 It runs in a safe, sandboxed, and predictable environment.
 
 As long as your programming ecosystem can target WebAssembly, you get first-class support in Yoke.
@@ -101,10 +104,12 @@ So now that I’ve convinced a small percentage of readers that maybe what they 
 
 What can I install, practically speaking? We can definitely build new "charts" as "flights".
 
-Some things already exist as Flights hosted by the Yoke project — like its "air traffic controller" or "yokecd", a Yoke-extended version of ArgoCD.  
+Some things already exist as Flights hosted by the Yoke project — like its "air traffic controller" or "yokecd", a Yoke-extended version of ArgoCD.
+
 That said, the Yoke ecosystem is still new. Adoption is, for now, just a dream on the horizon. The ecosystem still has to be built.
 
-But what about the existing Helm ecosystem?  
+But what about the existing Helm ecosystem?
+
 If I need Helm just to install Redis, is switching to Yoke even worth it?
 
 And what about all the internal Charts we use at our organizations?  
@@ -118,12 +123,9 @@ But that’s not the whole story.
 
 Yoke recognizes that it has no path forward — not even a snowball’s chance in hell — without some degree of interoperability with Helm.
 
-And fortunately, things just kind of worked out.  
-Yoke executes code compiled to WebAssembly to transform inputs into outputs.  
-Helm is written in Go.  
-Go can be compiled to WebAssembly.
+And fortunately, things just kind of worked out. Yoke executes code compiled to WebAssembly to transform inputs into outputs.
 
-**Yoke can use Helm.**
+Helm is written in Go. Go can be compiled to WebAssembly. **Yoke can use Helm.**
 
 Let’s be clear: Yoke doesn’t use Helm to do package management or deployment.  
 But users can build Flights that embed Helm Charts and execute them to get their desired resources.
