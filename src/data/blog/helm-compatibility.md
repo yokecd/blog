@@ -17,7 +17,7 @@ description: >
 
 ## Charts and Flights – What's the Difference?
 
-At the end of the day, both Helm Charts and Yoke Flights are ways to dynamically package Kubernetes resources.
+At the end of the day, both Helm Charts and [Yoke Flights](https://yokecd.github.io/docs/concepts/flights/) are ways to dynamically package Kubernetes resources.
 
 At an algebraic level, both can be viewed as functions:
 
@@ -35,7 +35,7 @@ resources = helm.chart(values.yaml)
 resources = yoke.flight(stdin)
 ```
 
-From that perspective, working with Helm or Yoke is about transforming inputs into outputs. The difference lies in how we express that transformation function.
+From that perspective, working with Helm or [Yoke](https://github.com/yokecd/yoke) is about transforming inputs into outputs. The difference lies in how we express that transformation function.
 
 The Helm transformation function is the Go template engine. We write a number of YAML files, organized as best we see fit, and define one or more resources per file.
 
@@ -86,15 +86,15 @@ Or Go with its tight integration within the Kubernetes ecosystem?
 
 The larger point is this: the best tools we have for handling structured data and producing structured output are programming languages.
 
-That’s the position Yoke takes.
+That’s the position [Yoke](https://github.com/yokecd/yoke) takes.
 
 Of course, it wouldn’t be feasible to support just _any_ source code, nor would it be safe to execute arbitrary binaries.
 
-That’s why, as luck would have it, Yoke supports WebAssembly as a shared target for code execution.
+That’s why, as luck would have it, [Yoke supports WebAssembly](https://yokecd.github.io/docs/concepts/wasm/) as a shared target for code execution.
 
 It runs in a safe, sandboxed, and predictable environment.
 
-As long as your programming ecosystem can target WebAssembly, you get first-class support in Yoke.
+As long as your programming ecosystem can target WebAssembly, you get first-class support in [Yoke](https://github.com/yokecd/yoke).
 
 ## A Tale of Two Ecosystems
 
@@ -104,13 +104,14 @@ So now that I’ve convinced a small percentage of readers that maybe what they 
 
 What can I install, practically speaking? We can definitely build new "charts" as "flights".
 
-Some things already exist as Flights hosted by the Yoke project — like its "air traffic controller" or "yokecd", a Yoke-extended version of ArgoCD.
+Some things already exist as Flights hosted by the Yoke project,
+like its "[air traffic controller](https://yokecd.github.io/docs/airtrafficcontroller/atc/)" or "[yokecd](https://yokecd.github.io/docs/yokecd/)", a Yoke-extended version of ArgoCD.
 
 That said, the Yoke ecosystem is still new. Adoption is, for now, just a dream on the horizon. The ecosystem still has to be built.
 
 But what about the existing Helm ecosystem?
 
-If I need Helm just to install Redis, is switching to Yoke even worth it?
+If I need Helm just to install redis, is switching to [Yoke](https://github.com/yokecd/yoke) even worth it?
 
 And what about all the internal Charts we use at our organizations?  
 Does everything need to be ported to code on day one in order to start using Yoke?
@@ -143,7 +144,7 @@ This provides a smooth migration path from Charts to Flights, rather than forcin
   However, I have plans to remove this limitation. For more information, see this <a href="https://github.com/yokecd/yoke/issues/126">issue</a>.
 </div>
 
-Let’s take a technical deep dive into how this works.
+This wouldn't be a [yoke](https://github.com/yokecd/yoke) blog without a technical deep dive into how all of this works.
 
 WebAssembly modules do not have access to the filesystem or network.  
 That means we need to _embed_ the Chart into our program.
@@ -346,7 +347,7 @@ So what have we learned?
 
 We’ve looked at Helm — for all its strengths — and seen how it starts to fall apart once you outgrow simple configuration.
 
-We’ve talked about how Yoke offers a fresh approach: treating templating not as a special YAML problem, but as a real programming problem. Inputs in, outputs out. Transformation as code.
+We’ve talked about how [Yoke](https://github.com/yokecd/yoke) offers a fresh approach: treating templating not as a special YAML problem, but as a real programming problem. Inputs in, outputs out. Transformation as code.
 
 This shift in perspective gifts us strong typing, real tooling, actual debuggers, and the freedom to express our logic in the language of our choice (as long as it compiles to WebAssembly).
 
@@ -357,7 +358,7 @@ But instead of pretending Helm doesn’t exist, Yoke embraces it.
 You can embed Charts. You can render them. You can gradually migrate them.
 
 It’s not all-or-nothing. It’s not rewrite-everything-on-day-one:
-**Yoke is about opening the escape hatch — not slamming the door shut.**
+**Yoke is about opening the escape hatch, not slamming the door shut.**
 
 There’s still work to do. The yoke ecosystem is young.
 
