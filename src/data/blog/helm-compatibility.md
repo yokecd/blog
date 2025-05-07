@@ -359,4 +359,5 @@ It’s not all-or-nothing. It’s not rewrite-everything-on-day-one:
 
 There’s still work to do. The yoke ecosystem is young.
 
-But if you believe Kubernetes resource management is important enough to deserve better programming environment than a text engine, maybe it’s time to give Yoke a try.
+But if you believe Kubernetes resource management is important enough to deserve a better programming environment than a text engine, maybe it’s time to give Yoke a try.
+
