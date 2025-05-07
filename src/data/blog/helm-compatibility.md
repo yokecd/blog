@@ -144,9 +144,13 @@ This provides a smooth migration path from Charts to Flights, rather than forcin
   However, I have plans to remove this limitation. For more information, see this <a href="https://github.com/yokecd/yoke/issues/126">issue</a>.
 </div>
 
-This wouldn't be a [yoke](https://github.com/yokecd/yoke) blog without a technical deep dive into how all of this works.
+This wouldn't be a [yoke](https://github.com/yokecd/yoke) blog without a little bit of a demonstration in code.
 
-WebAssembly modules do not have access to the filesystem or network.  
+All we need to remember, is that a Flight is an **runnable program** that writes resources to **stdout**.
+
+Our program is going to need to include and run the Chart. The following is an example written in **Go** of how to do exactly that. Let's begin!
+
+Remember, WebAssembly modules do not have access to the filesystem or network.  
 That means we need to _embed_ the Chart into our program.
 
 Thankfully, since Go 1.16, this is easy to do using Go's `embed` package:
@@ -209,10 +213,22 @@ k8s.io/apimachinery/pkg/apis/meta/v1/unstructured.Unstructured
 
 This allows us to work with them in a generic, flexible way.
 
-Finally, we can return the resources as JSON over stdout once we’ve finished manipulating them:
+We can write the resources as JSON over stdout once we’ve finished manipulating them:
 
 ```go
 json.NewEncoder(os.Stdout).Encode(resources)
+```
+
+And with that final step we've created a (abridged) program that embeds and executes a Chart.
+
+All that is left to do is compile it to WebAssembly, and use yoke to apply it.
+
+```bash
+# compile to WebAssembly.
+GOOS=wasip1 GOARCH=wasm go build -o ./main.wasm ./main.go
+
+# deploy via yoke
+yoke apply release-name ./main.wasm
 ```
 
 ## Conclusion
