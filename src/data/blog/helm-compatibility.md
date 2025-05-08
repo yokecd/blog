@@ -15,6 +15,14 @@ description: >
 
 ## Table of Contents
 
+## Introduction
+
+For a long time, Kubernetes resource management has been synonymous with Helm.
+
+There have been plenty of attempts to replace Helm and its templating miasma known as Charts. But those attempts never seem to stick, often because they’re fundamentally too different, or because the size and mass of the Helm ecosystem creates an inertia that’s hard to overcome.
+
+This post explores how [Yoke](https://github.com/yokecd/yoke) is trying to do the impossible: introducing _Flights_, a complete alternative to Helm Charts, while bringing them along for the ride.
+
 ## Charts and Flights – What's the Difference?
 
 At the end of the day, both Helm Charts and [Yoke Flights](https://yokecd.github.io/docs/concepts/flights/) are ways to dynamically package Kubernetes resources.
