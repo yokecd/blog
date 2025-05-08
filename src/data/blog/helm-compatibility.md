@@ -3,7 +3,6 @@ author: David Desmarais-Michaud
 pubDatetime: 2025-05-07
 title: "Modern Kubernetes: Can we replace Helm?"
 slug: helm-compatibility
-workInProgress: true
 featured: true
 tags:
   - yoke
@@ -19,9 +18,10 @@ description: >
 
 For a long time, Kubernetes resource management has been synonymous with Helm.
 
-There have been plenty of attempts to replace Helm and its templating miasma known as Charts. But those attempts never seem to stick, often because they’re fundamentally too different, or because the size and mass of the Helm ecosystem creates an inertia that’s hard to overcome.
+There have been plenty of attempts to replace Helm and its templating miasma known as Charts.
+But those attempts never seem to stick, sometimes because they’re not different enough, or more often because the size and mass of the Helm ecosystem creates an inertia that’s hard to overcome.
 
-This post explores how [Yoke](https://github.com/yokecd/yoke) is trying to do the impossible: introducing _Flights_, a complete alternative to Helm Charts, while bringing them along for the ride.
+This post explores how [Yoke](https://github.com/yokecd/yoke) is trying to do the impossible: introducing _Flights_, a complete alternative to Helm Charts, while bringing Helm along for the ride.
 
 ## Charts and Flights – What's the Difference?
 
@@ -37,7 +37,7 @@ Where the function `f` is the chart or flight, `x` represents the inputs, and `y
 
 ```bash
 # With Helm
-resources = helm.chart(values.yaml)
+resources = helm.chart(values)
 
 # With Yoke
 resources = yoke.flight(stdin)
@@ -103,6 +103,8 @@ That’s why, as luck would have it, [Yoke supports WebAssembly](https://yokecd.
 It runs in a safe, sandboxed, and predictable environment.
 
 As long as your programming ecosystem can target WebAssembly, you get first-class support in [Yoke](https://github.com/yokecd/yoke).
+
+A Flight is program that reads inputs over stdin, and writes Kubernetes resources over stdout.
 
 ## A Tale of Two Ecosystems
 
