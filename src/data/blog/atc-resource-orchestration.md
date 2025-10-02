@@ -4,7 +4,6 @@ pubDatetime: 2025-10-01
 title: Resource Orchestration with the Yoke ATC
 slug: yoke-resource-orchestration
 featured: true
-workInProgress: true
 description: >
   If your application is more than just a simple list of manifests, 
   you've probably felt the pain of orchestration in Kubernetes. 
