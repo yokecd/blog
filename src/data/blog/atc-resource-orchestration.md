@@ -18,8 +18,8 @@ tags:
 
 This post reads better if you understand the basics of [yoke](/docs) and the [Air Traffic Controller](/docs/airtrafficcontroller/atc).
 
-In essence, Yoke provides a way to define packages as shareable programs compiled to WASM called Flights.
-The Air Traffic Controller allows you to extend the Kubernetes API via Airways, a custom resource that defines a CRD for your cluster and binds it to flight. 
+In essence, Yoke provides a way to define packages as shareable programs compiled to [WASM](https://webassembly.org/) called Flights.
+The Air Traffic Controller allows you to extend the Kubernetes API via Airways, a custom resource that defines a CRD for your cluster and binds it to a flight. 
 
 This blog post is about how the Air Traffic Controller can enable powerful, arbitrary resource orchestration.
 
@@ -29,7 +29,7 @@ Enjoy.
 
 If you've ever managed a complex application in Kubernetes, you've likely felt the anxiety of waiting for all your resources to become healthy. You have a database that needs to be ready before your application starts, a series of batch jobs that must run in perfect sequence, or a service that depends on a secret managed by a completely different system. How do you express these relationships? Today, in general, you don't.
 
-For years, the tools we've reached for, like Helm and Kustomize, haven't really had an answer. They’ve taught us to see our applications as a flat list of YAML manifests, a static collection of resources to be thrown over the wall at the Kubernetes API. This is great for simple, stateless apps, but the moment you want to express order, coordination, or statefulness, things get complicated.
+For years, the tools we've reached for, like Helm and Kustomize, haven't really had an answer. They’ve taught us to see our packages as a flat list of YAML manifests, a static collection of resources to be thrown over the wall at the Kubernetes API. This is great for simple, stateless apps, but the moment you want to express order, coordination, or statefulness, things get complicated.
 
 Here, we're talking about orchestration: the ability to intelligently manage the lifecycle of an application's components, not just create them and hope for the best.
 
@@ -45,7 +45,7 @@ Now, we know that suggesting a move away from pure YAML can be controversial. Fo
 
 The idea is to deploy everything at once and simply trust that, eventually, controllers will reconcile, dependencies will become available, and things will just… work. We've all seen this in practice: a pod enters CrashLoopBackOff until its required ConfigMap or Secret is finally created by another system.
 
-To be clear, eventual consistency is a fundamental part of how Kubernetes works, and it's a powerful concept. The problem is that, for too long, it has been our only tool for managing complex workflows. We were forced to rely on it because our tools gave us no other choice. It’s a classic case of the medium is the message. Our YAML-centric tools could only express a desired end state, not the journey to get there.
+To be clear, eventual consistency is a fundamental part of how Kubernetes works, and it's a powerful concept. The problem is that, for too long, it has been our only tool for managing complex workflows. We were forced to rely on it because our tools gave us no other choice; the medium is the message. Our YAML-centric tools could only express a desired end state, not the journey to get there.
 
 ## The Operator Dilemma
 
@@ -55,12 +55,12 @@ While building an operator is a powerful and valid approach, it's a significant 
 
 ## A New Model: Application Logic as Code
 
-This is where [yoke](https://github.com/yokecd/yoke) and the AirTrafficController (ATC), introduce a different way of thinking. Instead of generating a static set of YAML manifest files, [yoke](https://github.com/yokecd/yoke) defines them with executable code.
+This is where [yoke](https://github.com/yokecd/yoke) and the AirTrafficController (ATC), introduce a different way of thinking. Instead of generating a static set of YAML manifest files, [yoke](https://github.com/yokecd/yoke) defines its packages as executable code.
 
 This allows you to focus purely on your application's orchestration logic by writing a simple program that follows a familiar pattern:
 
 1. Read the inputs from your custom resource.
-2. Read the live state from the cluster.
+2. Make decisions based on the live state from the cluster.
 3. Update your custom resource's status with progress or information.
 4. Emit the desired resources that should exist in the cluster right now.
 
@@ -149,7 +149,7 @@ v1alpha1.Airway{
 }
 ```
 
-The real magic is in the WASM module's logic. Let's walk through it conceptually.
+The real magic is in the WASM module's logic. Let's walk through it.
 
 ```go
 // run contains the core orchestration logic for our Pipeline.
@@ -234,7 +234,7 @@ func hasJobCompleted(pipeline *Pipeline, job *batchv1.Job) (ok bool, err error) 
 }
 ```
 
-This simple Go program perfectly expresses our desired orchestration. It creates one job, checks its status, and only proceeds once that job is complete. The control loop provided by the ATC handles all the "waiting" and "re-triggering" for us.
+This simple Go program expresses our desired orchestration. It creates one job, checks its status, and only proceeds once that job is complete. The control loop provided by the ATC handles all the "waiting" and "re-triggering" for us.
 
 ### Example 2: Coordinating with External Resources
 
