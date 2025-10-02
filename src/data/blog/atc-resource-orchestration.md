@@ -5,8 +5,11 @@ title: Resource Orchestration with the Yoke ATC
 slug: yoke-resource-orchestration
 featured: true
 workInProgress: true
-description: |
-  orchestration with the yoke air traffic controller
+description: >
+  If your application is more than just a simple list of manifests, 
+  you've probably felt the pain of orchestration in Kubernetes. 
+  We dive into a new model that replaces static YAML with simple, executable code,
+  letting you build complex, reactive deployments without having to write a full-blown operator.
 tags:
   - Yoke
   - AirTrafficController
