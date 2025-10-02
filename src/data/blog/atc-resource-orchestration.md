@@ -1,7 +1,7 @@
 ---
 author: David Desmarais-Michaud
 pubDatetime: 2025-10-01
-title: Resource Orchestration with the Yoke ATC
+title: Kubernetes Orchestration is More Than a Bag of YAML
 slug: yoke-resource-orchestration
 featured: true
 description: >
